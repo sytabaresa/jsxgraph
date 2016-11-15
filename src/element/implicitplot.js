@@ -46,115 +46,12 @@
  /**
   * @fileoverview In this file the conic sections defined.
   */
-
-define([
-     'jxg', 'base/constants', 'base/coords', 'math/math', 'math/numerics', 'math/geometry', 'utils/type', 'base/point', 'base/curve'
-], function (JXG, Const, Coords, Mat, Numerics, Geometry, Type, Point, Curve) {
-
-    JXG.createImplicitPlot = function (board, parents, attributes) {
-        var el, attr;
-
-        attr = JXG.copyAttributes(attributes, board.options, 'curve');
-        el = board.create('curve', [[0], [0]], attr);
-
-        el.equation = parents[0];
-        el.updateDataArray = function() {
-            var x, y, i, j, len,
-                result,
-                val = this.equation(0, 0),
-                bb = this.board.getBoundingBox(),
-                array = [],
-                searchDepth = 8,
-                d = searchDepth + 2,
-                steps = (bb[2] - bb[0]) / (d * d);
-
-            this.dataX = [];
-            this.dataY = [];
-
-            find_points(this.equation, array, 0, bb[0], bb[3], bb[2] - bb[0], searchDepth);
-            result = organizePoints(this.equation, array, steps);
-            len = result.length;
-            console.log(len);
-
-            for (i = 0; i < len; i++) {
-                for (j = 0; j < result[i].length; j++) {
-                    this.dataX.push(result[i][j][0]);
-                    this.dataY.push(result[i][j][1]);
-                }
-                this.dataX.push(NaN);
-                this.dataY.push(NaN);
-            }
-        };
-
-        el.contour_present = function(f, x, y, d) {
-            var fxy = f(x, y),
-                fxdy = f(x + d, y),
-                fxyd = f(x, y + d),
-                fxdyd = f(x + d, y + d);
-
-            if (fxy * fxdy < 0 ||
-                fxy * fxyd < 0 ||
-                fxdy * fxdyd < 0) {
-                return true;
-            } else if (fxy === 0 &&
-                        (fxdy * fxdyd < 0 ||
-                         fxyd * fxdyd < 0 ||
-                         fxdyd === 0)) {
-                return true;
-            } else if (fxdy === 0 &&
-                        (fxy * fxyd < 0 ||
-                         fxyd * fxdyd < 0 ||
-                         fxyd === 0)) {
-                return true;
-            }
-            return false;
-        };
-
-        el.subdivide = function(f, array, depth, x, y, d, searchDepth) {
-            find_points(f, array, depth + 1, x,           y,           d * 0.5, searchDepth);
-            find_points(f, array, depth + 1, x + d * 0.5, y,           d * 0.5, searchDepth);
-            find_points(f, array, depth + 1, x + d * 0.5, y + d * 0.5, d * 0.5, searchDepth);
-            find_points(f, array, depth + 1, x,           y + d * 0.5, d * 0.5, searchDepth);
-        };
-
-        el.prepareUpdate().update().updateRenderer();
-        return el;
-    };
-
-    JXG.registerElement('implicitplot', JXG.createImplicitPlot);
-
-    return {
-        createImplicitPlot: JXG.createImplicitPlot
-    };
-
-});
-
-
 function equal(v1, v2)
 {
     var EPS = 10e-6;
     return Math.abs(v1-v2) < EPS;
 }
 
-function addInArray(ptsArray, point)
-{
-    if (ptsArray.length == 0)
-    {
-        ptsArray[0] = new Array();
-        ptsArray[0].push(point);
-    }
-    else
-    {
-        var pos;
-        for(pos=0; pos < ptsArray.length && ptsArray[pos][0][0] < point[0]; pos++)
-            ;
-        if (pos == ptsArray.length)
-            ptsArray[pos] = new Array();
-        else if(point[0] != ptsArray[pos][0][0])
-            ptsArray.splice(pos, 0, new Array());
-        ptsArray[pos].push(point);
-    }
-}
 
 function distance(p1, p2)
 {
@@ -438,22 +335,4 @@ function organizePoints(f, ptsArray, step) {
     }
 
     return result;
-}
-
-function find_points(f, array, depth, x, y, d, searchDepth) {
-    var firstDepth = searchDepth,
-        secondDepth = searchDepth + 2,
-        point;
-
-    if (depth < firstDepth) {
-        subdivide(f, array, depth, x, y, d, searchDepth);
-    } else if (contour_present(f, x, y, d)) {
-        if (depth < secondDepth) {
-            subdivide(f, array, depth, x, y, d, searchDepth);
-        } else {
-            point = [(2 * x + d) * 0.5,
-                     (2 * y + d) * 0.5];
-            addInArray(array, point);
-        }
-    }
 }

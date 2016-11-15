@@ -2373,6 +2373,48 @@ define([
 
     JXG.registerElement('stepfunction', JXG.createStepfunction);
 
+    JXG.createImplicitplot = function (board, parents, attributes) {
+        var el, attr;
+
+        attr = JXG.copyAttributes(attributes, board.options, 'curve');
+        el = board.create('curve', [[0], [0]], attr);
+
+        el.equation = parents[0];
+        el.updateDataArray = function() {
+            var x, y, i, j, len,
+                result,
+                val = this.equation(0, 0),
+                bb = this.board.getBoundingBox(),
+                array = [],
+                searchDepth = 8,
+                d = searchDepth + 2,
+                steps = (bb[2] - bb[0]) / (d * d);
+
+            this.dataX = [];
+            this.dataY = [];
+
+            find_points(this.equation, array, 0, bb[0], bb[3], bb[2] - bb[0], searchDepth);
+            result = organizePoints(this.equation, array, steps);
+            len = result.length;
+            console.log(len);
+
+            for (i = 0; i < len; i++) {
+                for (j = 0; j < result[i].length; j++) {
+                    this.dataX.push(result[i][j][0]);
+                    this.dataY.push(result[i][j][1]);
+                }
+                this.dataX.push(NaN);
+                this.dataY.push(NaN);
+            }
+        };
+
+        el.prepareUpdate().update().updateRenderer();
+        return el;
+    };
+
+    JXG.registerElement('implicitplot', JXG.createImplicitPlot);
+
+
     return {
         Curve: JXG.Curve,
         createCurve: JXG.createCurve,
@@ -2381,6 +2423,7 @@ define([
         createSpline: JXG.createSpline,
         createRiemannsum: JXG.createRiemannsum,
         createTracecurve: JXG.createTracecurve,
-        createStepfunction: JXG.createStepfunction
+        createStepfunction: JXG.createStepfunction,
+        createImplicitplot: JXG.createImplicitplot
     };
 });
