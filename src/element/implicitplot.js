@@ -66,13 +66,13 @@ define([
                 array = [],
                 searchDepth = 8,
                 d = searchDepth + 2,
-                step = (bb[2] - bb[0]) / (d * d);
+                steps = (bb[2] - bb[0]) / (d * d);
 
             this.dataX = [];
             this.dataY = [];
 
-            find_points(this.equation, array, 0, bb[0], bb[3], bb[2]-bb[0], searchDepth);
-            result = organizePoints(this.equation, array, step);
+            find_points(this.equation, array, 0, bb[0], bb[3], bb[2] - bb[0], searchDepth);
+            result = organizePoints(this.equation, array, steps);
             len = result.length;
             console.log(len);
 
@@ -130,19 +130,19 @@ function distance(p1, p2)
     return Math.sqrt(Math.pow(p1[0]-p2[0], 2) + Math.pow(p1[1]-p2[1], 2));
 }
 
-function organizePoints(f, ptsArray, step)
-{
-    if (ptsArray.length == 0)
+function organizePoints(f, ptsArray, step) {
+    if (ptsArray.length === 0) {
         return [];
+    }
 
-    sortedPtsArray = new Array();
+    sortedPtsArray = [];
     curvePart = 0;
     // find curve parts
 
     var stepX = step;
     var stepY = step;
 
-    sortedPtsArray[curvePart] = new Array();
+    sortedPtsArray[curvePart] = [];
     sortedPtsArray[curvePart].push(ptsArray[0][0]);
     var lastPoint = ptsArray[0][0];
     var indexOfLastPoint = 0;
@@ -409,42 +409,46 @@ function organizePoints(f, ptsArray, step)
     return result;
 }
 
-function find_points(f, array, depth, x, y, d, searchDepth)
-{
-    var firstDepth = searchDepth;
-    var secondDepth = searchDepth+2;
+function find_points(f, array, depth, x, y, d, searchDepth) {
+    var firstDepth = searchDepth,
+        secondDepth = searchDepth + 2,
+        point;
 
-    if (depth < firstDepth)
+    if (depth < firstDepth) {
         subdivide(f, array, depth, x, y, d, searchDepth);
-    else if (contour_present(f, x, y, d))
-    {
-        if (depth < secondDepth)
+    } else if (contour_present(f, x, y, d)) {
+        if (depth < secondDepth) {
             subdivide(f, array, depth, x, y, d, searchDepth);
-        else
-        {
-            var px = (2*x+d)/2;
-            var py = (2*y+d)/2;
-            point = [px, py];
+        } else {
+            point = [(2 * x + d) * 0.5,
+                     (2 * y + d) * 0.5];
             addInArray(array, point);
         }
     }
 }
 
-function subdivide(f, array, depth, x, y, d, searchDepth)
-{
-    find_points(f, array, depth+1, x, y, d/2, searchDepth);
-    find_points(f, array, depth+1, x+d/2, y, d/2, searchDepth);
-    find_points(f, array, depth+1, x+d/2, y+d/2, d/2, searchDepth);
-    find_points(f, array, depth+1, x, y+d/2, d/2, searchDepth);
+function subdivide(f, array, depth, x, y, d, searchDepth) {
+    find_points(f, array, depth + 1, x,           y,           d * 0.5, searchDepth);
+    find_points(f, array, depth + 1, x + d * 0.5, y,           d * 0.5, searchDepth);
+    find_points(f, array, depth + 1, x + d * 0.5, y + d * 0.5, d * 0.5, searchDepth);
+    find_points(f, array, depth + 1, x,           y + d * 0.5, d * 0.5, searchDepth);
 }
 
-function contour_present(f, x, y, d)
-{
-    if (f(x,y) * f(x+d, y) < 0 || f(x, y) * f(x, y+d) < 0 || f(x+d, y) * f(x+d, y+d) < 0)
+function contour_present(f, x, y, d) {
+    if (f(x, y) * f(x + d, y) < 0 ||
+        f(x, y) * f(x, y + d) < 0 ||
+        f(x + d, y) * f(x + d, y + d) < 0) {
         return true;
-    else if (f(x,y) == 0 && ( f(x+d,y) * f(x+d,y+d) < 0 || f(x,y+d) * f(x+d,y+d) < 0 || f(x+d, y+d) == 0) )
+    } else if (f(x, y) === 0 &&
+                (f(x + d, y) * f(x + d, y + d) < 0 ||
+                 f(x, y + d) * f(x + d, y + d) < 0 ||
+                 f(x + d, y + d) === 0)) {
         return true;
-    else if (f(x+d,y) == 0 && ( f(x,y) * f(x,y+d) < 0 || f(x,y+d) * f(x+d,y+d) < 0 || f(x, y+d) == 0) )
+    } else if (f(x + d, y) === 0 &&
+                (f(x, y) * f(x, y + d) < 0 ||
+                 f(x, y + d) * f(x + d, y + d) < 0 ||
+                 f(x, y + d) === 0)) {
         return true;
+    }
     return false;
 }
