@@ -86,6 +86,37 @@ define([
             }
         };
 
+        el.contour_present = function(f, x, y, d) {
+            var fxy = f(x, y),
+                fxdy = f(x + d, y),
+                fxyd = f(x, y + d),
+                fxdyd = f(x + d, y + d);
+
+            if (fxy * fxdy < 0 ||
+                fxy * fxyd < 0 ||
+                fxdy * fxdyd < 0) {
+                return true;
+            } else if (fxy === 0 &&
+                        (fxdy * fxdyd < 0 ||
+                         fxyd * fxdyd < 0 ||
+                         fxdyd === 0)) {
+                return true;
+            } else if (fxdy === 0 &&
+                        (fxy * fxyd < 0 ||
+                         fxyd * fxdyd < 0 ||
+                         fxyd === 0)) {
+                return true;
+            }
+            return false;
+        };
+
+        el.subdivide = function(f, array, depth, x, y, d, searchDepth) {
+            find_points(f, array, depth + 1, x,           y,           d * 0.5, searchDepth);
+            find_points(f, array, depth + 1, x + d * 0.5, y,           d * 0.5, searchDepth);
+            find_points(f, array, depth + 1, x + d * 0.5, y + d * 0.5, d * 0.5, searchDepth);
+            find_points(f, array, depth + 1, x,           y + d * 0.5, d * 0.5, searchDepth);
+        };
+
         el.prepareUpdate().update().updateRenderer();
         return el;
     };
@@ -425,30 +456,4 @@ function find_points(f, array, depth, x, y, d, searchDepth) {
             addInArray(array, point);
         }
     }
-}
-
-function subdivide(f, array, depth, x, y, d, searchDepth) {
-    find_points(f, array, depth + 1, x,           y,           d * 0.5, searchDepth);
-    find_points(f, array, depth + 1, x + d * 0.5, y,           d * 0.5, searchDepth);
-    find_points(f, array, depth + 1, x + d * 0.5, y + d * 0.5, d * 0.5, searchDepth);
-    find_points(f, array, depth + 1, x,           y + d * 0.5, d * 0.5, searchDepth);
-}
-
-function contour_present(f, x, y, d) {
-    if (f(x, y) * f(x + d, y) < 0 ||
-        f(x, y) * f(x, y + d) < 0 ||
-        f(x + d, y) * f(x + d, y + d) < 0) {
-        return true;
-    } else if (f(x, y) === 0 &&
-                (f(x + d, y) * f(x + d, y + d) < 0 ||
-                 f(x, y + d) * f(x + d, y + d) < 0 ||
-                 f(x + d, y + d) === 0)) {
-        return true;
-    } else if (f(x + d, y) === 0 &&
-                (f(x, y) * f(x, y + d) < 0 ||
-                 f(x, y + d) * f(x + d, y + d) < 0 ||
-                 f(x, y + d) === 0)) {
-        return true;
-    }
-    return false;
 }
