@@ -190,7 +190,8 @@ define([
 
 var pos;
 var noPossiblePoints, minYin, maxYin = 0, startIndex = 0;
-var neighbourIndex;
+var neighbourIndex, lastIndex;
+var noX, noY, sX, sY, ptsSX, signSX;
 
                 if (neighbours.length === 0) {
                     for (pos = 0; pos < ptsArray.length; pos++) {
@@ -225,13 +226,11 @@ var neighbourIndex;
                         if (pos + 1 < ptsArray.length - 1 &&
                             ptsArray[pos + 1].length > 1) {
                             for (i = 0; i < ptsArray[pos + 1].length; i++) {
-                                if (equal(ptsArray[pos][minYin][1], ptsArray[pos+1][i][1]))
-                                {
+                                if (equal(ptsArray[pos][minYin][1], ptsArray[pos+1][i][1])) {
                                     neighbourIndex = minYin;
                                     break;
                                 }
-                                if (equal(ptsArray[pos][maxYin][1], ptsArray[pos+1][i][1]))
-                                {
+                                if (equal(ptsArray[pos][maxYin][1], ptsArray[pos+1][i][1])) {
                                     neighbourIndex = maxYin;
                                     break;
                                 }
@@ -239,95 +238,83 @@ var neighbourIndex;
                         }
                         startIndex = (neighbourIndex == maxYin) ? minYin : maxYin;
                     }
-                    sortedPtsArray[++curvePart] = new Array();
+                    sortedPtsArray[++curvePart] = [];
                     sortedPtsArray[curvePart].push(ptsArray[pos][startIndex]);
 
                     lastPoint = ptsArray[pos][startIndex];
                     indexOfLastPoint = pos;
                     ptsArray[pos].splice(startIndex,1);
-                }
-                else
-                {
-                    if (sortedPtsArray[curvePart].length == 1)
-                    { // start of closed curve
+                } else {
+                    if (sortedPtsArray[curvePart].length == 1) { // start of closed curve
                         sortedPtsArray[curvePart].push(ptsArray[neighbours[0][0]][neighbours[0][1]]);
                         lastPoint = ptsArray[neighbours[0][0]][neighbours[0][1]];
                         indexOfLastPoint = neighbours[0][0];
                         ptsArray[neighbours[0][0]].splice(neighbours[0][1],1);
-                    }
-                    else if (neighbours.length == 1)
-                    { // just one neighbour point
+                    } else if (neighbours.length == 1) { // just one neighbour point
                         sortedPtsArray[curvePart].push(ptsArray[neighbours[0][0]][neighbours[0][1]]);
                         lastPoint = ptsArray[neighbours[0][0]][neighbours[0][1]];
                         indexOfLastPoint = neighbours[0][0];
                         ptsArray[neighbours[0][0]].splice(neighbours[0][1],1);
 
-                        if (sortedPtsArray[curvePart].length > 3)
-                        {
-                            var lastIndex = sortedPtsArray[curvePart].length-1;
+                        if (sortedPtsArray[curvePart].length > 3) {
+                            lastIndex = sortedPtsArray[curvePart].length-1;
                             if ( (  equal(sortedPtsArray[curvePart][lastIndex-2][0], sortedPtsArray[curvePart][lastIndex-1][0]) &&
                                     equal(sortedPtsArray[curvePart][lastIndex-1][0], sortedPtsArray[curvePart][lastIndex][0] )) ||
                                  (  equal(sortedPtsArray[curvePart][lastIndex-2][1], sortedPtsArray[curvePart][lastIndex-1][1]) &&
-                                    equal(sortedPtsArray[curvePart][lastIndex-1][1], sortedPtsArray[curvePart][lastIndex][1]) ) )
+                                    equal(sortedPtsArray[curvePart][lastIndex-1][1], sortedPtsArray[curvePart][lastIndex][1]) ) ) {
                                         sortedPtsArray[curvePart].splice(lastIndex-1, 1);
+                            }
                         }
-                    }
-                    else if (neighbours.length > 1)
-                    {
-                        var noX = 0,
-                            noY = 0,
-                            sX, sY,
-                            ptsSX = new Array();
+                    } else if (neighbours.length > 1) {
+                        noX = 0;
+                        noY = 0;
+                        ptsSX = [];
 
-                        if (equal(lastPoint[1], ptsArray[neighbours[0][0]][neighbours[0][1]][1]))
+                        if (equal(lastPoint[1], ptsArray[neighbours[0][0]][neighbours[0][1]][1])) {
                             sX = ptsArray[neighbours[0][0]][neighbours[0][1]][0] - lastPoint[0];
-                        else
+                        } else {
                             sX = ptsArray[neighbours[1][0]][neighbours[1][1]][0] - lastPoint[0];
-                        if (equal(lastPoint[0], ptsArray[neighbours[0][0]][neighbours[0][1]][0]))
+                        }
+                        if (equal(lastPoint[0], ptsArray[neighbours[0][0]][neighbours[0][1]][0])) {
                             sY = ptsArray[neighbours[0][0]][neighbours[0][1]][1] - lastPoint[1];
-                        else
+                        } else {
                             sY = ptsArray[neighbours[1][0]][neighbours[1][1]][1] - lastPoint[1];
+                        }
 
-                        ptsSX[0] = new Array();
-                        ptsSX[1] = new Array();
+                        ptsSX[0] = [];
+                        ptsSX[1] = [];
 
-                        var signSX = (sX > 0) ? 1 : -1;
+                        signSX = (sX > 0) ? 1 : -1;
 
-
-                        for(var i=indexOfLastPoint+signSX; i<ptsArray.length && i>=0; i+=signSX)
-                        {
-                            noX=0;
-                            for(var j=0; j<ptsArray[i].length; j++)
-                            {
-                                if (equal(lastPoint[1], ptsArray[i][j][1]))
-                                {
+                        for(i = indexOfLastPoint + signSX; i < ptsArray.length && i >= 0; i += signSX) {
+                            noX = 0;
+                            for(j = 0; j < ptsArray[i].length; j++) {
+                                if (equal(lastPoint[1], ptsArray[i][j][1])) {
                                     noX++;
                                     ptsSX[0].push([i, j]);
                                 }
-                                if (equal(lastPoint[1]+sY, ptsArray[i][j][1]))
-                                {
+                                if (equal(lastPoint[1]+sY, ptsArray[i][j][1])) {
                                     ptsSX[1].push([i, j]);
                                 }
                             }
-                            if (noX == 0)
+                            if (noX == 0) {
                                 break;
+                            }
                         }
 
-                        for(var i=0; i<ptsSX[0].length/2; i++)
-                        {
+                        for (i = 0; i < ptsSX[0].length / 2; i++) {
                             sortedPtsArray[curvePart].push(ptsArray[ptsSX[0][i][0]][ptsSX[0][i][1]]);
                             lastPoint = ptsArray[ptsSX[0][i][0]][ptsSX[0][i][1]];
                             indexOfLastPoint = ptsSX[0][i][0];
                         }
-                        for(var i=parseInt(ptsSX[1].length/2); i<ptsSX[1].length; i++)
-                        {
+                        for (i = parseInt(ptsSX[1].length / 2); i < ptsSX[1].length; i++) {
                             sortedPtsArray[curvePart].push(ptsArray[ptsSX[1][i][0]][ptsSX[1][i][1]]);
                             lastPoint = ptsArray[ptsSX[1][i][0]][ptsSX[1][i][1]];
                             indexOfLastPoint = ptsSX[1][i][0];
                         }
-                        for(var i=parseInt(ptsSX[1].length/2); i<ptsSX[1].length; i++)
+                        for (i =parseInt(ptsSX[1].length/2); i<ptsSX[1].length; i++)
                             ptsArray[ptsSX[1][i][0]].splice(ptsSX[1][i][1],1);
-                        for(var i=0; i<ptsSX[0].length/2; i++)
+                        for (var i=0; i<ptsSX[0].length/2; i++)
                             ptsArray[ptsSX[0][i][0]].splice(ptsSX[0][i][1],1);
 
                         var next = new Array();
