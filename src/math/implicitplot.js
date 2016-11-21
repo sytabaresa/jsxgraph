@@ -120,7 +120,9 @@ define([
                 stepX, stepY,
                 lastPoint, indexOfLastPoint,
                 noPoints, i, j, len,
-                iter;
+                iter,
+                neighbours, previousIndex, nextIndex;
+
 
             if (ptsArray.length === 0) {
                 return [];
@@ -150,15 +152,13 @@ define([
                 }
             }
 
-var neighbours, previousIndex, nextIndex;
-
             for (iter = 0; iter < noPoints; iter++) {
                 neighbours = [];
 
                 previousIndex = (indexOfLastPoint != 0 &&
                         ptsArray[indexOfLastPoint - 1].length != 0 &&
                         equal(ptsArray[indexOfLastPoint-1][0][0] + stepX, lastPoint[0])) ?
-                                    indexOfLastPoint - 1 : -1;
+                            indexOfLastPoint - 1 : -1;
                 nextIndex = (indexOfLastPoint != ptsArray.length - 1 &&
                         ptsArray[indexOfLastPoint+1].length != 0 &&
                         equal(ptsArray[indexOfLastPoint+1][0][0] - stepX, lastPoint[0]) ) ?
@@ -179,44 +179,52 @@ var neighbours, previousIndex, nextIndex;
                     }
                 }
 
-                if (nextIndex != -1)
-                    for(var i=0; i<ptsArray[nextIndex].length; i++)
-                        if (equal(lastPoint[1], ptsArray[nextIndex][i][1]))
+                if (nextIndex != -1) {
+                    for(i = 0; i < ptsArray[nextIndex].length; i++) {
+                        if (equal(lastPoint[1], ptsArray[nextIndex][i][1])) {
                             neighbours.push([nextIndex, i]);
+                        }
+                    }
+                }
 
-                if (neighbours.length == 0)
-                {
-                    var pos = 0;
-                    for(pos=0; pos<ptsArray.length; pos++)
-                        if (ptsArray[pos].length != 0)
+
+var pos;
+var noPossiblePoints, minYin, maxYin = 0, startIndex = 0;
+var neighbourIndex;
+
+                if (neighbours.length === 0) {
+                    for (pos = 0; pos < ptsArray.length; pos++) {
+                        if (ptsArray[pos].length != 0) {
                             break;
-                    if (pos == ptsArray.length)
+                        }
+                    }
+                    if (pos == ptsArray.length) {
                         break;
+                    }
 
-                    var noPossiblePoints = ptsArray[pos].length,
-                        minYin = 0,
-                        maxYin = 0,
-                        startIndex = 0;
+                    noPossiblePoints = ptsArray[pos].length;
+                    minYin = 0;
+                    maxYin = 0;
+                    startIndex = 0;
 
-                    if (noPossiblePoints > 1)
-                    {
-                        var neighbourIndex = 0;
-                        for(var i=1; i<noPossiblePoints; i++)
-                            if (ptsArray[pos][i][1] < ptsArray[pos][minYin][1] )
-                            {
+                    if (noPossiblePoints > 1) {
+                        neighbourIndex = 0;
+                        for (i = 1; i < noPossiblePoints; i++) {
+                            if (ptsArray[pos][i][1] < ptsArray[pos][minYin][1]) {
                                 minYin = i;
                                 maxYin = i;
                             }
-                        for(var i=0; i<noPossiblePoints; i++)
-                        {
-                            if (equal(ptsArray[pos][maxYin][1], ptsArray[pos][i][1]-stepY))
-                                maxYin = i;
                         }
 
-                        if (pos+1 < ptsArray.length-1 && ptsArray[pos+1].length > 1)
-                        {
-                            for(var i=0; i<ptsArray[pos+1].length; i++)
-                            {
+                        for (i = 0; i < noPossiblePoints; i++) {
+                            if (equal(ptsArray[pos][maxYin][1], ptsArray[pos][i][1] - stepY)) {
+                                maxYin = i;
+                            }
+                        }
+
+                        if (pos + 1 < ptsArray.length - 1 &&
+                            ptsArray[pos + 1].length > 1) {
+                            for (i = 0; i < ptsArray[pos + 1].length; i++) {
                                 if (equal(ptsArray[pos][minYin][1], ptsArray[pos+1][i][1]))
                                 {
                                     neighbourIndex = minYin;
