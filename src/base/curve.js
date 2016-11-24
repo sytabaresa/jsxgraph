@@ -54,8 +54,8 @@
 
 define([
     'jxg', 'base/constants', 'base/coords', 'base/element', 'math/math', 'math/statistics', 'math/numerics',
-    'math/geometry', 'parser/geonext', 'utils/type', 'base/transformation', 'math/qdt'
-], function (JXG, Const, Coords, GeometryElement, Mat, Statistics, Numerics, Geometry, GeonextParser, Type, Transform, QDT) {
+    'math/geometry', 'math/implicitplot', 'parser/geonext', 'utils/type', 'base/transformation', 'math/qdt'
+], function (JXG, Const, Coords, GeometryElement, Mat, Statistics, Numerics, Geometry, ImplicitPlot, GeonextParser, Type, Transform, QDT) {
 
     "use strict";
 
@@ -2380,6 +2380,7 @@ define([
         el = board.create('curve', [[0], [0]], attr);
 
         el.equation = parents[0];
+
         el.updateDataArray = function() {
             var x, y, i, j, len,
                 result,
@@ -2393,10 +2394,10 @@ define([
             this.dataX = [];
             this.dataY = [];
 
-            find_points(this.equation, array, 0, bb[0], bb[3], bb[2] - bb[0], searchDepth);
-            result = organizePoints(this.equation, array, steps);
+            ImplicitPlot.find_points(this.equation, array, 0, bb[0], bb[3], bb[2] - bb[0], searchDepth);
+            result = ImplicitPlot.organizePoints(this.equation, array, steps);
             len = result.length;
-            console.log(len);
+            console.log("Pieces: ",len);
 
             for (i = 0; i < len; i++) {
                 for (j = 0; j < result[i].length; j++) {
@@ -2412,8 +2413,7 @@ define([
         return el;
     };
 
-    JXG.registerElement('implicitplot', JXG.createImplicitPlot);
-
+    JXG.registerElement('implicitplot', JXG.createImplicitplot);
 
     return {
         Curve: JXG.Curve,

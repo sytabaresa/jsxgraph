@@ -47,7 +47,7 @@ define([
 
     "use strict";
 
-    Mat.Implicitplot = {
+    Mat.ImplicitPlot = {
         is_contour_present: function(f, x, y, d) {
             var fxy = f(x, y),
                 fxdy = f(x + d, y),
@@ -114,7 +114,7 @@ define([
             }
         },
 
-        function organizePoints(f, ptsArray, step) {
+        organizePoints: function(f, ptsArray, step) {
             var sortedPtsArray,
                 curvePart,
                 stepX, stepY,
@@ -146,7 +146,7 @@ define([
             indexOfLastPoint = 0;
 
             ptsArray[0].splice(0, 1);
-            if (ptsArray[0].length == 0) {
+            if (ptsArray[0].length === 0) {
                 ptsArray.splice(0, 1);
             }
 
@@ -161,25 +161,25 @@ define([
             for (iter = 0; iter < noPoints; iter++) {
                 neighbours = [];
 
-                previousIndex = (indexOfLastPoint != 0 &&
-                        ptsArray[indexOfLastPoint - 1].length != 0 &&
-                        equal(ptsArray[indexOfLastPoint-1][0][0] + stepX, lastPoint[0])) ?
+                previousIndex = (indexOfLastPoint !== 0 &&
+                        ptsArray[indexOfLastPoint - 1].length !== 0 &&
+                        Mat.isEqual(ptsArray[indexOfLastPoint-1][0][0] + stepX, lastPoint[0])) ?
                             indexOfLastPoint - 1 : -1;
                 nextIndex = (indexOfLastPoint != ptsArray.length - 1 &&
-                        ptsArray[indexOfLastPoint+1].length != 0 &&
-                        equal(ptsArray[indexOfLastPoint+1][0][0] - stepX, lastPoint[0]) ) ?
+                        ptsArray[indexOfLastPoint+1].length !== 0 &&
+                        Mat.isEqual(ptsArray[indexOfLastPoint+1][0][0] - stepX, lastPoint[0]) ) ?
                             indexOfLastPoint + 1 : -1;
 
                 for (i = 0; i < ptsArray[indexOfLastPoint].length; i++) {
-                    if (equal(lastPoint[1], ptsArray[indexOfLastPoint][i][1]+stepY) ||
-                        equal(lastPoint[1], ptsArray[indexOfLastPoint][i][1]-stepY)) {
+                    if (Mat.isEqual(lastPoint[1], ptsArray[indexOfLastPoint][i][1]+stepY) ||
+                        Mat.isEqual(lastPoint[1], ptsArray[indexOfLastPoint][i][1]-stepY)) {
                         neighbours.push([indexOfLastPoint, i]);
                     }
                 }
 
                 if (previousIndex != -1) {
                     for (i = 0; i < ptsArray[previousIndex].length; i++) {
-                        if (equal(lastPoint[1], ptsArray[previousIndex][i][1])) {
+                        if (Mat.isEqual(lastPoint[1], ptsArray[previousIndex][i][1])) {
                             neighbours.push([previousIndex, i]);
                         }
                     }
@@ -187,7 +187,7 @@ define([
 
                 if (nextIndex != -1) {
                     for(i = 0; i < ptsArray[nextIndex].length; i++) {
-                        if (equal(lastPoint[1], ptsArray[nextIndex][i][1])) {
+                        if (Mat.isEqual(lastPoint[1], ptsArray[nextIndex][i][1])) {
                             neighbours.push([nextIndex, i]);
                         }
                     }
@@ -195,7 +195,7 @@ define([
 
                 if (neighbours.length === 0) {
                     for (pos = 0; pos < ptsArray.length; pos++) {
-                        if (ptsArray[pos].length != 0) {
+                        if (ptsArray[pos].length !== 0) {
                             break;
                         }
                     }
@@ -218,7 +218,7 @@ define([
                         }
 
                         for (i = 0; i < noPossiblePoints; i++) {
-                            if (equal(ptsArray[pos][maxYin][1], ptsArray[pos][i][1] - stepY)) {
+                            if (Mat.isEqual(ptsArray[pos][maxYin][1], ptsArray[pos][i][1] - stepY)) {
                                 maxYin = i;
                             }
                         }
@@ -226,11 +226,11 @@ define([
                         if (pos + 1 < ptsArray.length - 1 &&
                             ptsArray[pos + 1].length > 1) {
                             for (i = 0; i < ptsArray[pos + 1].length; i++) {
-                                if (equal(ptsArray[pos][minYin][1], ptsArray[pos+1][i][1])) {
+                                if (Mat.isEqual(ptsArray[pos][minYin][1], ptsArray[pos+1][i][1])) {
                                     neighbourIndex = minYin;
                                     break;
                                 }
-                                if (equal(ptsArray[pos][maxYin][1], ptsArray[pos+1][i][1])) {
+                                if (Mat.isEqual(ptsArray[pos][maxYin][1], ptsArray[pos+1][i][1])) {
                                     neighbourIndex = maxYin;
                                     break;
                                 }
@@ -258,10 +258,10 @@ define([
 
                         if (sortedPtsArray[curvePart].length > 3) {
                             lastIndex = sortedPtsArray[curvePart].length-1;
-                            if ( (  equal(sortedPtsArray[curvePart][lastIndex-2][0], sortedPtsArray[curvePart][lastIndex-1][0]) &&
-                                    equal(sortedPtsArray[curvePart][lastIndex-1][0], sortedPtsArray[curvePart][lastIndex][0] )) ||
-                                 (  equal(sortedPtsArray[curvePart][lastIndex-2][1], sortedPtsArray[curvePart][lastIndex-1][1]) &&
-                                    equal(sortedPtsArray[curvePart][lastIndex-1][1], sortedPtsArray[curvePart][lastIndex][1]) ) ) {
+                            if ( (  Mat.isEqual(sortedPtsArray[curvePart][lastIndex-2][0], sortedPtsArray[curvePart][lastIndex-1][0]) &&
+                                    Mat.isEqual(sortedPtsArray[curvePart][lastIndex-1][0], sortedPtsArray[curvePart][lastIndex][0] )) ||
+                                 (  Mat.isEqual(sortedPtsArray[curvePart][lastIndex-2][1], sortedPtsArray[curvePart][lastIndex-1][1]) &&
+                                    Mat.isEqual(sortedPtsArray[curvePart][lastIndex-1][1], sortedPtsArray[curvePart][lastIndex][1]) ) ) {
                                         sortedPtsArray[curvePart].splice(lastIndex-1, 1);
                             }
                         }
@@ -270,12 +270,12 @@ define([
                         noY = 0;
                         ptsSX = [];
 
-                        if (equal(lastPoint[1], ptsArray[neighbours[0][0]][neighbours[0][1]][1])) {
+                        if (Mat.isEqual(lastPoint[1], ptsArray[neighbours[0][0]][neighbours[0][1]][1])) {
                             sX = ptsArray[neighbours[0][0]][neighbours[0][1]][0] - lastPoint[0];
                         } else {
                             sX = ptsArray[neighbours[1][0]][neighbours[1][1]][0] - lastPoint[0];
                         }
-                        if (equal(lastPoint[0], ptsArray[neighbours[0][0]][neighbours[0][1]][0])) {
+                        if (Mat.isEqual(lastPoint[0], ptsArray[neighbours[0][0]][neighbours[0][1]][0])) {
                             sY = ptsArray[neighbours[0][0]][neighbours[0][1]][1] - lastPoint[1];
                         } else {
                             sY = ptsArray[neighbours[1][0]][neighbours[1][1]][1] - lastPoint[1];
@@ -289,15 +289,15 @@ define([
                         for(i = indexOfLastPoint + signSX; i < ptsArray.length && i >= 0; i += signSX) {
                             noX = 0;
                             for(j = 0; j < ptsArray[i].length; j++) {
-                                if (equal(lastPoint[1], ptsArray[i][j][1])) {
+                                if (Mat.isEqual(lastPoint[1], ptsArray[i][j][1])) {
                                     noX++;
                                     ptsSX[0].push([i, j]);
                                 }
-                                if (equal(lastPoint[1]+sY, ptsArray[i][j][1])) {
+                                if (Mat.isEqual(lastPoint[1]+sY, ptsArray[i][j][1])) {
                                     ptsSX[1].push([i, j]);
                                 }
                             }
-                            if (noX == 0) {
+                            if (noX === 0) {
                                 break;
                             }
                         }
@@ -323,15 +323,15 @@ define([
                         }
 
                        	next = [];
-                        if (ptsSX[1][ptsSX[1].length - 1] != undefined) {
+                        if (ptsSX[1][ptsSX[1].length - 1] !== undefined) {
                             for (i = 0; i < ptsArray[ptsSX[1][ptsSX[1].length - 1][0]].length; i++) {
-                                if(equal(ptsArray[ptsSX[1][ptsSX[1].length-1][0]][i][1], lastPoint[1]+sY)) {
+                                if(Mat.isEqual(ptsArray[ptsSX[1][ptsSX[1].length-1][0]][i][1], lastPoint[1]+sY)) {
                                     next = [ptsSX[1][ptsSX[1].length - 1][0], i];
                                 }
                             }
                         }
 
-                        if (next.length != 0) {
+                        if (next.length !== 0) {
                             sortedPtsArray[curvePart].push(ptsArray[next[0]][next[1]]);
                             lastPoint = ptsArray[next[0]][next[1]];
                             indexOfLastPoint = next[0];
@@ -423,5 +423,5 @@ define([
         }
     };
 
-    return Mat.Implicitplot;
-};
+    return Mat.ImplicitPlot;
+});

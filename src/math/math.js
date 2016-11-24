@@ -92,6 +92,13 @@ define(['jxg', 'utils/type'], function (JXG, Type) {
          */
         eps: 0.000001,
 
+        isEqual: function(a, b, eps) {
+            if (eps == undefined) {
+                eps = this.eps;
+            }
+            return Math.abs(a - b) < eps;
+        },
+
         /**
          * Determine the relative difference between two numbers.
          * @param  {Number} a First number
