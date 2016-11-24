@@ -42,8 +42,8 @@
   */
 
 define([
-     'jxg', 'math/math', 'utils/type'
-], function (JXG, Mat, Type) {
+     'jxg', 'math/math', 'math/geometry', 'utils/type'
+], function (JXG, Mat, Geometry, Type) {
 
     "use strict";
 
@@ -122,7 +122,13 @@ define([
                 noPoints, i, j, len,
                 iter,
                 neighbours, previousIndex, nextIndex;
-
+			var pos;
+			var noPossiblePoints, minYin, maxYin = 0, startIndex = 0;
+			var neighbourIndex, lastIndex;
+			var noX, noY, sX, sY, ptsSX, signSX;
+			var next, result, parts;
+			var minDistance, idx, isReverse, back;
+            var d;
 
             if (ptsArray.length === 0) {
                 return [];
@@ -186,12 +192,6 @@ define([
                         }
                     }
                 }
-
-
-var pos;
-var noPossiblePoints, minYin, maxYin = 0, startIndex = 0;
-var neighbourIndex, lastIndex;
-var noX, noY, sX, sY, ptsSX, signSX;
 
                 if (neighbours.length === 0) {
                     for (pos = 0; pos < ptsArray.length; pos++) {
@@ -307,26 +307,31 @@ var noX, noY, sX, sY, ptsSX, signSX;
                             lastPoint = ptsArray[ptsSX[0][i][0]][ptsSX[0][i][1]];
                             indexOfLastPoint = ptsSX[0][i][0];
                         }
+
                         for (i = parseInt(ptsSX[1].length / 2); i < ptsSX[1].length; i++) {
                             sortedPtsArray[curvePart].push(ptsArray[ptsSX[1][i][0]][ptsSX[1][i][1]]);
                             lastPoint = ptsArray[ptsSX[1][i][0]][ptsSX[1][i][1]];
                             indexOfLastPoint = ptsSX[1][i][0];
                         }
-                        for (i =parseInt(ptsSX[1].length/2); i<ptsSX[1].length; i++)
-                            ptsArray[ptsSX[1][i][0]].splice(ptsSX[1][i][1],1);
-                        for (var i=0; i<ptsSX[0].length/2; i++)
-                            ptsArray[ptsSX[0][i][0]].splice(ptsSX[0][i][1],1);
 
-                        var next = new Array();
-                        if (ptsSX[1][ptsSX[1].length-1] != undefined)
-                            for(var i=0; i<ptsArray[ptsSX[1][ptsSX[1].length-1][0]].length; i++)
-                            {
-                                if(equal(ptsArray[ptsSX[1][ptsSX[1].length-1][0]][i][1], lastPoint[1]+sY))
-                                    next = [ptsSX[1][ptsSX[1].length-1][0], i];
+                        for (i = parseInt(ptsSX[1].length / 2); i < ptsSX[1].length; i++) {
+                            ptsArray[ptsSX[1][i][0]].splice(ptsSX[1][i][1], 1);
+                        }
+
+                        for (i = 0; i < ptsSX[0].length / 2; i++) {
+                            ptsArray[ptsSX[0][i][0]].splice(ptsSX[0][i][1], 1);
+                        }
+
+                       	next = [];
+                        if (ptsSX[1][ptsSX[1].length - 1] != undefined) {
+                            for (i = 0; i < ptsArray[ptsSX[1][ptsSX[1].length - 1][0]].length; i++) {
+                                if(equal(ptsArray[ptsSX[1][ptsSX[1].length-1][0]][i][1], lastPoint[1]+sY)) {
+                                    next = [ptsSX[1][ptsSX[1].length - 1][0], i];
+                                }
                             }
+                        }
 
-                        if(next.length != 0)
-                        {
+                        if (next.length != 0) {
                             sortedPtsArray[curvePart].push(ptsArray[next[0]][next[1]]);
                             lastPoint = ptsArray[next[0]][next[1]];
                             indexOfLastPoint = next[0];
@@ -337,76 +342,85 @@ var noX, noY, sX, sY, ptsSX, signSX;
             }
 
             // connect parts
-            var result = new Array();
+            result = [];
             parts = 0;
 
-            result[parts] = new Array();
-            for(var i=0; i<sortedPtsArray[parts].length; i++)
+            result[parts] = [];
+            for (i = 0; i < sortedPtsArray[parts].length; i++) {
                 result[parts].push(sortedPtsArray[parts][i]);
+            }
             sortedPtsArray.splice(0, 1);
 
-            while(sortedPtsArray.length > 0)
-            {
-                var minDistance = 10000;
-                var idx = -1;
-                var reverse = false;
-                var back = true;
-                for(i=0; i<sortedPtsArray.length; i++)
-                {
-                    if(result[parts][result[parts].length-1][0] > sortedPtsArray[i][0])
+            while(sortedPtsArray.length > 0) {
+                minDistance = 10000;
+                idx = -1;
+                isReverse = false;
+				back = true;
+                for (i = 0; i < sortedPtsArray.length; i++) {
+                    if (result[parts][result[parts].length-1][0] > sortedPtsArray[i][0]) {
                          continue;
-                    if (distance(result[parts][result[parts].length-1], sortedPtsArray[i][0]) < minDistance)
-                    {
-                        minDistance = distance(result[parts][result[parts].length-1], sortedPtsArray[i][0]);
+                    }
+
+                    d = Geometry.distance(result[parts][result[parts].length-1],
+                            sortedPtsArray[i][0], 2);
+                    if (d < minDistance) {
+                        minDistance = d;
                         idx = i;
                         back = true;
-                        reverse = false;
+                        isReverse = false;
                     }
-                    if (distance(result[parts][result[parts].length-1], sortedPtsArray[i][sortedPtsArray[i].length-1]) < minDistance)
-                    {
-                        minDistance = distance(result[parts][result[parts].length-1], sortedPtsArray[i][sortedPtsArray[i].length-1]);
+
+                    d = Geometry.distance(result[parts][result[parts].length-1],
+                            sortedPtsArray[i][sortedPtsArray[i].length - 1], 2);
+                    if (d < minDistance) {
+                        minDistance = d;
                         idx = i;
                         back = true;
-                        reverse = true;
+                        isReverse = true;
                     }
-                    if (distance(result[parts][0], sortedPtsArray[i][0]) < minDistance)
-                    {
-                        minDistance = distance(result[parts][0], sortedPtsArray[i][0]);
+
+                    d = Geometry.distance(result[parts][0], sortedPtsArray[i][0], 2);
+                    if (d < minDistance) {
+                        minDistance = d;
                         idx = i;
                         back = false;
-                        reverse = false;
+                        isReverse = false;
                     }
-                    if (distance(result[parts][0], sortedPtsArray[i][sortedPtsArray[i].length-1]) < minDistance)
-                    {
-                        minDistance = distance(result[parts][0], sortedPtsArray[i][sortedPtsArray[i].length-1]);
+
+                    d = Geometry.distance(result[parts][0],
+                        sortedPtsArray[i][sortedPtsArray[i].length - 1], 2);
+                    if (d < minDistance) {
+                        minDistance = d;
                         idx = i;
                         back = false;
-                        reverse = true;
+                        isReverse = true;
                     }
                 }
-                if (minDistance > 4*stepX)
-                {
-                    result[++parts] = new Array();
+
+                if (minDistance > 4*stepX) {
+                    result[++parts] = [];
                     idx = 0;
                 }
 
-                if (reverse)
+                if (isReverse) {
                     sortedPtsArray[idx].reverse();
-                if (back)
-                    for (var i=0; i<sortedPtsArray[idx].length; i++)
+                }
+
+                if (back) {
+                    for (i = 0; i < sortedPtsArray[idx].length; i++) {
                         result[parts].push(sortedPtsArray[idx][i]);
-                else
-                    for (var i=0; i<sortedPtsArray[idx].length; i++)
+                    }
+                } else {
+                    for (i=0; i < sortedPtsArray[idx].length; i++) {
                         result[parts].splice(0, 0, sortedPtsArray[idx][i]);
+                    }
+                }
 
                 sortedPtsArray.splice(idx, 1);
             }
 
             return result;
         }
-
-
-
     };
 
     return Mat.Implicitplot;
