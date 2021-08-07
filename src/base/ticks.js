@@ -340,6 +340,19 @@ define([
                 bounds.upper = r_max;
             }
 
+            if (Type.evaluate(this.visProp.type) === 'smith1') {
+                bb = this.board.getBoundingBox();
+                r_max = Math.max(Math.sqrt(bb[0] * bb[0] + bb[1] * bb[1]),
+                    Math.sqrt(bb[2] * bb[2] + bb[3] * bb[3]));
+                bounds.upper = r_max;
+            }
+
+            if (Type.evaluate(this.visProp.type) === 'smith2') {
+                bb = this.board.getBoundingBox();
+                r_max = Math.max(Math.sqrt(bb[0] * bb[0] + bb[1] * bb[1]),
+                    Math.sqrt(bb[2] * bb[2] + bb[3] * bb[3]));
+                bounds.upper = r_max;
+            }
             // Clean up
             this.ticks = [];
             this.labelsData = [];
@@ -956,7 +969,70 @@ define([
                     return [x, y, major];
                 }
 
-            } else {
+            } else if (major && Type.evaluate(this.visProp.type) === 'smith1') {
+               // polar style
+               bb = this.board.getBoundingBox();
+               full = 2.0 * Math.PI;
+               delta = full / 180;
+               //ratio = this.board.unitY / this.board.X;
+
+               // usrCoords: Test if 'circle' is inside of the canvas
+               c = coords.usrCoords;
+               r = Math.sqrt(c[1] * c[1] + c[2] * c[2]);
+               r_max = Math.max(Math.sqrt(bb[0] * bb[0] + bb[1] * bb[1]),
+                               Math.sqrt(bb[2] * bb[2] + bb[3] * bb[3]));
+                // var rr = (1/R)-1
+                var rr =  (1 - c[1]) / 2;
+                var r2 = (1/rr)-1
+
+               if (rr > 0 && rr <= 1) {
+                   // Now, switch to screen coords
+                   x = [];
+                   y = [];
+                   var center = [0,0];
+                   center[0] = this.board.origin.scrCoords[1] + r2/(1+r2) * this.board.unitX;
+                   center[1] = this.board.origin.scrCoords[2];
+
+                   for (i = 0; i <= full; i += delta) {
+                       x.push(center[0] + rr * Math.cos(i) * this.board.unitX);
+                       y.push(center[1] + rr * Math.sin(i) * this.board.unitY);
+                   }
+                   return [x, y, major];
+               }
+            
+            } else if (major && Type.evaluate(this.visProp.type) === 'smith2') {
+                // polar style
+                bb = this.board.getBoundingBox();
+                full = 2.0 * Math.PI;
+                delta = full / 180;
+                //ratio = this.board.unitY / this.board.X;
+ 
+                // usrCoords: Test if 'circle' is inside of the canvas
+                c = coords.usrCoords;
+                r = Math.sqrt(c[1] * c[1] + c[2] * c[2]);
+                r_max = Math.max(Math.sqrt(bb[0] * bb[0] + bb[1] * bb[1]),
+                                Math.sqrt(bb[2] * bb[2] + bb[3] * bb[3]));
+                 // var rr = (1/R)-1
+                 var rr =  (1 - c[1]) / 2;
+                 var r2 = (1/rr)-1;
+ 
+                if (rr > 0 && rr <= 1) {
+                    // Now, switch to screen coords
+                    x = [];
+                    y = [];
+                    var center = [0,0];
+                    center[0] = this.board.origin.scrCoords[1] + r2/(1+r2) * this.board.unitX;
+                    center[1] = this.board.origin.scrCoords[2];
+ 
+                    for (i = 0; i <= full; i += delta) {
+                        x.push(center[0] + rr * Math.cos(i) * this.board.unitX);
+                        y.push(center[1] + rr * Math.sin(i) * this.board.unitY);
+                    }
+                    return [x, y, major];
+                }
+             
+             }
+            else {
                 // line style
                 if (style === 'infinite') {
                     intersection = Geometry.meetLineBoard(lineStdForm, this.board);
