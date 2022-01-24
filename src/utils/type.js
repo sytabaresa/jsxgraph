@@ -196,18 +196,29 @@ define([
          * @param {Boolean} [checkEmptyString=false] If set to true, it is also checked whether v is not equal to ''.
          * @returns {Boolean} True, if v is neither undefined nor null.
          */
-        exists: (function (undef) {
-            return function (v, checkEmptyString) {
-                var result = !(v === undef || v === null);
+        exists: function (v, checkEmptyString) {
+            /* eslint-disable eqeqeq */
+            var result = !(v == undefined || v === null);
+            /* eslint-enable eqeqeq */
+            checkEmptyString = checkEmptyString || false;
 
-                checkEmptyString = checkEmptyString || false;
-                
-                if (checkEmptyString) {
-                    return result && v !== '';
-                }
-                return result;
-            };
-        }()),
+            if (checkEmptyString) {
+                return result && v !== '';
+            }
+            return result;
+        },
+        // exists: (function (undef) {
+        //     return function (v, checkEmptyString) {
+        //         var result = !(v === undef || v === null);
+
+        //         checkEmptyString = checkEmptyString || false;
+
+        //         if (checkEmptyString) {
+        //             return result && v !== '';
+        //         }
+        //         return result;
+        //     };
+        // }()),
 
         /**
          * Checks if v is an empty object or empty.
@@ -703,12 +714,12 @@ define([
          * is returned by JavaScript's toFixed()
          *
          * @memberOf JXG
-         * @param  {Number} num       Number tp be rounded
-         * @param  {Number} precision Decimal digits
-         * @return {String}           Rounded number is returned as string
+         * @param  {Number} num    Number tp be rounded
+         * @param  {Number} digits Decimal digits
+         * @return {String}        Rounded number is returned as string
          */
-        toFixed: function (num, precision) {
-            return this._round10(num, -precision).toFixed(precision);
+        toFixed: function (num, digits) {
+            return this._round10(num, -digits).toFixed(digits);
         },
 
         /**
@@ -1110,6 +1121,7 @@ define([
                 strokecolor: '',
                 strokeopacity: '',
                 strokewidth: '',
+                tabindex: -100000,
                 transitionduration: 0,
                 top: -100000,
                 visible: null
@@ -1154,7 +1166,7 @@ define([
          * @returns {String}
          */
         unescapeHTML: function (str) {
-            // this regex is NOT insecure. We are replacing everything found with ''
+            // This regex is NOT insecure. We are replacing everything found with ''
             /*jslint regexp:true*/
             return str.replace(/<\/?[^>]+>/gi, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
         },

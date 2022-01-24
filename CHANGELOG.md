@@ -1,3 +1,130 @@
+1.4.0
+====
+
+New features
+-----------
+
+- New element `boxplot`
+- New element `foreignobject`, shortcut `fo`
+- New point attribute `attractToGrid`
+- New method `Polygon.pnpoly()`
+- New method `JXG.Math.statistics.percentile`
+- New method `JXG.Math.Numerics.lagrangePolynomialTerm()`, also available as `JXG.Math.Numerics.lagrangePolynomial.geTerm()`
+- Curve / circle intersection
+- New color scheme, optimised for color blindness, see `JXG.palette`. Old color scheme can be restored by calling `JXG.setClassicColors()`.
+
+Improvements
+------------
+
+- Keyboard interaction
+- isOn method for elements with `hasInnerPoints` attribute
+- Much smoother two finger handling for pointer events
+- Intersection of curves having different Bezier degrees
+- API docs: many bug fixes and new examples
+- Jessiecode tag
+- Security: sanitize HTML in texts in case of JessieCode
+
+Bug fixes
+---------
+
+- `zoom100()` restores the original bounding box
+- `Button.setText()`
+- Regression on glider.position
+- ResizeContainer conflicted with zoom level
+- Regular polygon
+- `setAngle()`
+- JessieCode
+
+Ecosystem
+------------
+
+- Testing with Travis is enabled again
+- Revoke unit tests using Karma and Jasmine
+- Update Makefile and package.json, less dependencies from npmjs. `make core-min` is now included in `make core`.
+
+Many thanks go to Christian Lawson-Perfect for his contributions.
+
+1.3.2
+====
+
+Improvements
+------------
+
+- Fullscreen mode is now also possible with an out div, see
+<https://jsxgraph.org/docs/symbols/JXG.Board.html#toFullscreen>
+
+Bug fixes
+---------
+
+- Fixed regression regarding full screen mode
+- Fixed board freeze when certain devices are hit with the palm
+
+1.3.1
+====
+
+New features
+-----------
+
+- New method: JXG.Math.Geometry.affineRatio
+
+Improvements
+------------
+
+- Responsiveness: more stable reaction to size changes
+- Improved fullscreen mode in cases where the JSXGraph div does not have fixed width or height
+- `isOn` method covers also polygons with `hasInnerPoints:true`
+- API doc
+
+Bug fixes
+---------
+
+- Fixed: computation of intersection between parallel and (half-)bounded line
+- Fixed: Intersection points between circle and line with straights off
+- Fixed: handling of many (uncontrolled) simultaneous pointer events
+- Fixed regression: points defined as transformations of other points
+
+1.3.0
+====
+
+New features
+-----------
+
+- Responsiveness:
+  - JSXGraph updates bounding box on resize events triggered by resizeObserver, also e.g. when changing from display:none.
+  - New board attribute `moveTarget` allows to continue dragging outside of the board
+  - New attribute `fontUnit` for texts
+- Accessibility: keyboard control of JSXGraph boards
+- New JSXGraph objects `curvedifference`, `curveintersection`, `curveunion`
+- New arrow head type 7
+- JessieCode: JessieCode tags support attribute `src`.
+- Angle: new attribute value `radius:'auto'`
+- New math functions erf, erfc, erfi, ndtr, ndtri, acosh, asinh
+- New math functions (comparisons and logical operators as functions): lt, gt, leq, geq, eq, neq, and, or, not, xor
+- New method: point.isOn(element)
+
+Improvements
+------------
+
+- Arrows on curves: default arrow type 7
+- Smoother animations of texts: pixel position of texts is no longer rounded
+- Remove internal helper points if parent object is deleted (somewhat experimental)
+- New default: minimizeReflow:'none'
+- New method `coordsOnArc`
+- In fixed angles (set with `setAngle`) all three points now be dragged.
+- Intersection with arc behaves like intersection with circle
+- TypeScript: improve and update `index.d.ts`
+- API docs
+
+
+Bug fixes
+---------
+
+- slopeTriangle: attribute `topPoint`
+- Snapping of glider to curve
+- Magnetized points on polygons
+- JessieCode parser
+- Clipping: shapes with holes
+
 1.2.3
 ====
 

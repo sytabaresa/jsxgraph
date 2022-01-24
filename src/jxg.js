@@ -53,6 +53,7 @@ define([], function () {
 
     /**
      * JXG is the top object of JSXGraph and defines the namespace
+     * @exports jxg as JXG
      */
     var jxg = {};
 
@@ -130,9 +131,9 @@ define([], function () {
         onlyOwn = onlyOwn || false;
         toUpper = toUpper || false;
 
-        // the purpose of this for...in loop is indeed to use hasOwnProperty only if the caller explicitly wishes so.
+        // The purpose of this for...in loop is indeed to use hasOwnProperty only if the caller explicitly wishes so.
         for (e in constants) {
-            if (!onlyOwn || (onlyOwn && extension.hasOwnProperty(e))) {
+            if (!onlyOwn || (onlyOwn && constants.hasOwnProperty(e))) {
                 if (toUpper) {
                     e2 = e.toUpperCase();
                 } else {
@@ -160,7 +161,7 @@ define([], function () {
 
         /**
          * Associative array that keeps track of all constructable elements registered
-         * via {@link JXG.JSXGraph.registerElement}.
+         * via {@link JXG.registerElement}.
          * @type Object
          */
         elements: {},

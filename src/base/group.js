@@ -93,7 +93,7 @@ define([
          * It has to be kept updated in this class "by hand"-
          *
          * @private
-         * @type {Object}
+         * @type Object
          * @see JXG.Group#_updateCoordsCache
          */
         this.coords = {};
@@ -288,8 +288,9 @@ define([
                              center[0] * (1 -  sx), sx, 0,
                              center[1] * (1 -  sy), 0, sy], {type: 'generic'});
                     t.update();  // This initializes t.matrix, which is needed if the action element is the first group element.
+                } else {
+                    return this;
                 }
-                return this;
             }
 
             this._update_apply_transformation(drag, t);

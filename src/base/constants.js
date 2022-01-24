@@ -41,9 +41,9 @@ define(['jxg'], function (JXG) {
     'use strict';
 
     var major = 1,
-        minor = 2,
-        patch = 4,
-        add = 'dev', //'dev_a'
+        minor = 4,
+        patch = 1,
+        add = 'dev', //'dev'
         version = major + '.' + minor + '.' + patch + (add ? '-' + add : ''),
         constants;
 
@@ -52,7 +52,7 @@ define(['jxg'], function (JXG) {
          * Constant: the currently used JSXGraph version.
          *
          * @name JXG.version
-         * @type {String}
+         * @type String
          */
         version: version,
 
@@ -61,21 +61,21 @@ define(['jxg'], function (JXG) {
          * showCopyright is not set to false on board creation).
          *
          * @name JXG.licenseText
-         * @type {String}
+         * @type String
          */
         licenseText: 'JSXGraph v' + version + ' Copyright (C) see https://jsxgraph.org',
 
         /**
          *  Constant: user coordinates relative to the coordinates system defined by the bounding box.
          *  @name JXG.COORDS_BY_USER
-         *  @type {Number}
+         *  @type Number
          */
         COORDS_BY_USER: 0x0001,
 
         /**
          *  Constant: screen coordinates in pixel relative to the upper left corner of the div element.
          *  @name JXG.COORDS_BY_SCREEN
-         *  @type {Number}
+         *  @type Number
          */
         COORDS_BY_SCREEN: 0x0002,
 
@@ -110,6 +110,7 @@ define(['jxg'], function (JXG) {
         OBJECT_TYPE_INPUT: 28,
         OBJECT_TYPE_BUTTON: 29,
         OBJECT_TYPE_TRANSFORMATION: 30,
+        OBJECT_TYPE_FOREIGNOBJECT: 31,
 
         // IMPORTANT:
         // ----------
@@ -130,8 +131,19 @@ define(['jxg'], function (JXG) {
         GENTYPE_ABC: 1, // unused
         GENTYPE_AXIS: 2,
         GENTYPE_MID: 3,
-        /** @deprecated, now use {@link JXG.GENTYPE_REFLECTION_ON_LINE} */  GENTYPE_REFLECTION: 4,
-        /** @deprecated, now use {@link JXG.GENTYPE_REFLECTION_ON_POINT} */ GENTYPE_MIRRORELEMENT: 5,
+
+        /**
+         * @ignore
+         * @deprecated, now use {@link JXG.GENTYPE_REFLECTION_ON_LINE}
+         *
+         */
+        GENTYPE_REFLECTION: 4,
+        /**
+         * @ignore
+         * @deprecated, now use {@link JXG.GENTYPE_REFLECTION_ON_POINT}
+         */
+        GENTYPE_MIRRORELEMENT: 5,
+
         GENTYPE_REFLECTION_ON_LINE: 4,
         GENTYPE_REFLECTION_ON_POINT: 5,
         GENTYPE_TANGENT: 6,
@@ -144,7 +156,11 @@ define(['jxg'], function (JXG) {
         GENTYPE_GLIDER: 13,
         GENTYPE_INTERSECTION: 14,
         GENTYPE_CIRCLE: 15,
-        /** @deprecated NOT USED ANY MORE SINCE SKETCHOMETRY 2.0 (only for old constructions needed) */ GENTYPE_CIRCLE2POINTS: 16,
+        /**
+         * @ignore @deprecated NOT USED ANY MORE SINCE SKETCHOMETRY 2.0 (only for old constructions needed)
+         */
+        GENTYPE_CIRCLE2POINTS: 16,
+
         GENTYPE_LINE: 17,
         GENTYPE_TRIANGLE: 18,
         GENTYPE_QUADRILATERAL: 19,
@@ -176,7 +192,12 @@ define(['jxg'], function (JXG) {
         GENTYPE_ABLATION: 45,
         GENTYPE_MIGRATE: 46,
         GENTYPE_VECTORCOPY: 47,
-        GENTYPE_POLYGONCOPY: 48,
+        GENTYPE_POLYGONCOPY: 48,    /**
+        * Constants
+        * @name Constants
+        * @namespace
+        */
+
         //        GENTYPE_TRANSFORM: 48, // unused
         // 49 ... 50 // unused ...
 

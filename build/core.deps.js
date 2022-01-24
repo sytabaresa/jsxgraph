@@ -8,6 +8,7 @@ define([
     'utils/event',
     'utils/expect',
     'math/math',
+    'math/probfuncs',
     'math/ia',
     'math/extrapolate',
     'math/qdt',
@@ -68,7 +69,8 @@ define([
     'element/slopetriangle',
     'element/checkbox',
     'element/input',
-    'element/button'
+    'element/button',
+    'base/foreignobject'
 ], function (JXG, Env) {
     "use strict";
 

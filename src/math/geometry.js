@@ -496,6 +496,38 @@ define([
         },
 
         /**
+         * Affine ratio of three collinear points a, b, c: (c - a) / (b - a).
+         * If r > 1 or r < 0 then c is outside of the segment ab.
+         *
+         * @param {Array|JXG.Coords} a
+         * @param {Array|JXG.Coords} b
+         * @param {Array|JXG.Coords} c
+         * @returns {Number} affine ratio (c - a) / (b - a)
+         */
+        affineRatio: function(a, b, c) {
+            var r = 0.0, dx;
+
+            if (Type.exists(a.usrCoords)) {
+                a = a.usrCoords;
+            }
+            if (Type.exists(b.usrCoords)) {
+                b = b.usrCoords;
+            }
+            if (Type.exists(c.usrCoords)) {
+                c = c.usrCoords;
+            }
+
+            dx =  b[1] - a[1];
+
+            if (Math.abs(dx) > Mat.eps) {
+                r = (c[1] - a[1]) / dx;
+            } else {
+                r = (c[2] - a[2]) / (b[2] - a[2]);
+            }
+            return r;
+        },
+
+        /**
          * Sort vertices counter clockwise starting with the first point.
          *
          * @param {Array} p An array containing {@link JXG.Point}, {@link JXG.Coords}, and/or arrays.
@@ -1023,25 +1055,47 @@ define([
          *   <li>i==0: use the positive square root,</li>
          *   <li>i==1: use the negative square root.</li></ul>
          * See further {@link JXG.Point#createIntersectionPoint}.
-         * @param {Boolean} alwaysintersect. Flag that determines if segements and arc can have an outer intersection point
+         * @param {Boolean} alwaysintersect. Flag that determines if segments and arc can have an outer intersection point
          * on their defining line or circle.
          * @returns {Function} Function returning a {@link JXG.Coords} object that determines
          * the intersection point.
          */
         intersectionFunction: function (board, el1, el2, i, j, alwaysintersect) {
-            var func, that = this;
+            var func, that = this,
+                el1_isArcType = false,
+                el2_isArcType = false;
 
-            if (el1.elementClass === Const.OBJECT_CLASS_CURVE &&
-                    el2.elementClass === Const.OBJECT_CLASS_CURVE) {
+            el1_isArcType = (el1.elementClass === Const.OBJECT_CLASS_CURVE &&
+                (el1.type === Const.OBJECT_TYPE_ARC || el1.type === Const.OBJECT_TYPE_SECTOR)
+                ) ? true : false;
+            el2_isArcType = (el2.elementClass === Const.OBJECT_CLASS_CURVE &&
+                (el2.type === Const.OBJECT_TYPE_ARC || el2.type === Const.OBJECT_TYPE_SECTOR)
+                ) ? true : false;
+
+            if ((el1.elementClass === Const.OBJECT_CLASS_CURVE || el2.elementClass === Const.OBJECT_CLASS_CURVE) &&
+                (el1.elementClass === Const.OBJECT_CLASS_CURVE || el1.elementClass === Const.OBJECT_CLASS_CIRCLE) &&
+                (el2.elementClass === Const.OBJECT_CLASS_CURVE || el2.elementClass === Const.OBJECT_CLASS_CIRCLE) /*&&
+                !(el1_isArcType && el2_isArcType)*/ ) {
                 // curve - curve
+                // with the exception that both elements are arc types
                 /** @ignore */
                 func = function () {
                     return that.meetCurveCurve(el1, el2, i, j, el1.board);
                 };
 
-            } else if ((el1.elementClass === Const.OBJECT_CLASS_CURVE && el2.elementClass === Const.OBJECT_CLASS_LINE) ||
-                    (el2.elementClass === Const.OBJECT_CLASS_CURVE && el1.elementClass === Const.OBJECT_CLASS_LINE)) {
-                // curve - line (this includes intersections between conic sections and lines
+            } else if ((
+                        el1.elementClass === Const.OBJECT_CLASS_CURVE &&
+                        !el1_isArcType &&
+                        el2.elementClass === Const.OBJECT_CLASS_LINE
+                       ) ||
+                       (
+                        el2.elementClass === Const.OBJECT_CLASS_CURVE &&
+                        !el2_isArcType &&
+                        el1.elementClass === Const.OBJECT_CLASS_LINE
+                       )
+                    ) {
+                // curve - line (this includes intersections between conic sections and lines)
+                // with the exception that the curve is of arc type
                 /** @ignore */
                 func = function () {
                     return that.meetCurveLine(el1, el2, i, el1.board, alwaysintersect);
@@ -1059,7 +1113,7 @@ define([
 
                     /**
                      * If one of the lines is a segment or ray and
-                     * the the intersection point should disappear if outside
+                     * the intersection point should disappear if outside
                      * of the segment or ray we call
                      * meetSegmentSegment
                      */
@@ -1068,8 +1122,7 @@ define([
                             el1.point1.coords.usrCoords,
                             el1.point2.coords.usrCoords,
                             el2.point1.coords.usrCoords,
-                            el2.point2.coords.usrCoords,
-                            el1.board
+                            el2.point2.coords.usrCoords
                         );
 
                         if ((!first1 && res[1] < 0) || (!last1 && res[1] > 1) ||
@@ -1086,14 +1139,78 @@ define([
                     return that.meet(el1.stdform, el2.stdform, i, el1.board);
                 };
             } else {
-                // All other combinations of circles and lines
+                // All other combinations of circles and lines,
+                // Arc types are treated as circles.
                 /** @ignore */
                 func = function () {
-                    return that.meet(el1.stdform, el2.stdform, i, el1.board);
+                    var res = that.meet(el1.stdform, el2.stdform, i, el1.board),
+                        has = true,
+                        first, last, r, dx;
+
+                    if (alwaysintersect) {
+                        return res;
+                    }
+                    if (el1.elementClass === Const.OBJECT_CLASS_LINE) {
+                        first = Type.evaluate(el1.visProp.straightfirst);
+                        last  = Type.evaluate(el1.visProp.straightlast);
+                        if (!first || !last) {
+                            r = that.affineRatio(el1.point1.coords, el1.point2.coords, res);
+                            if ( (!last && r > 1 + Mat.eps) || (!first && r < 0 - Mat.eps) ) {
+                                return (new Coords(JXG.COORDS_BY_USER, [0, NaN, NaN], el1.board));
+                            }
+                        }
+                    }
+                    if (el2.elementClass === Const.OBJECT_CLASS_LINE) {
+                        first = Type.evaluate(el2.visProp.straightfirst);
+                        last  = Type.evaluate(el2.visProp.straightlast);
+                        if (!first || !last) {
+                            r = that.affineRatio(el2.point1.coords, el2.point2.coords, res);
+                            if ( (!last && r > 1 + Mat.eps) || (!first && r < 0 - Mat.eps) ) {
+                                return (new Coords(JXG.COORDS_BY_USER, [0, NaN, NaN], el1.board));
+                            }
+                        }
+                    }
+                    if (el1_isArcType) {
+                        has = that.coordsOnArc(el1, res);
+                        if (has && el2_isArcType) {
+                            has = that.coordsOnArc(el2, res);
+                        }
+                        if (!has) {
+                            return (new Coords(JXG.COORDS_BY_USER, [0, NaN, NaN], el1.board));
+                        }
+                    }
+                    return res;
                 };
             }
 
             return func;
+        },
+
+        /**
+         * Returns true if the coordinates are on the arc element,
+         * false otherwise. Usually, coords is an intersection
+         * on the circle line. Now it is decided if coords are on the
+         * circle restricted to the arc line.
+         * @param  {Arc} arc arc or sector element
+         * @param  {JXG.Coords} coords Coords object of an intersection
+         * @returns {Boolean}
+         * @private
+         */
+        coordsOnArc: function(arc, coords) {
+            var angle = this.rad(arc.radiuspoint, arc.center, coords.usrCoords.slice(1)),
+                alpha = 0.0,
+                beta = this.rad(arc.radiuspoint, arc.center, arc.anglepoint),
+                ev_s = Type.evaluate(arc.visProp.selection);
+
+            if ((ev_s === 'minor' && beta > Math.PI) ||
+                (ev_s === 'major' && beta < Math.PI)) {
+                alpha = beta;
+                beta = 2 * Math.PI;
+            }
+            if (angle < alpha || angle > beta) {
+                return false;
+            }
+            return true;
         },
 
         /**
@@ -1252,7 +1369,6 @@ define([
 
                 return new Coords(Const.COORDS_BY_USER, [NaN, NaN], board);
             }
-
             c = circ[0];
             b = circ.slice(1, 3);
             a = circ[3];
@@ -1344,7 +1460,7 @@ define([
             if (Type.exists(method) && method === 'newton') {
                 co = Numerics.generalizedNewton(c1, c2, nr, t2ini);
             } else {
-                if (c1.bezierDegree === 3 && c2.bezierDegree === 3) {
+                if (c1.bezierDegree === 3 || c2.bezierDegree === 3) {
                     co = this.meetBezierCurveRedBlueSegments(c1, c2, nr);
                 } else {
                     co = this.meetCurveRedBlueSegments(c1, c2, nr);
@@ -1385,11 +1501,7 @@ define([
                 li = el1;
             }
 
-            // if (Type.evaluate(cu.visProp.curvetype) === 'plot') {
-                v = this.meetCurveLineDiscrete(cu, li, nr, board, !alwaysIntersect);
-            // } else {
-            //     v = this.meetCurveLineContinuous(cu, li, nr, board);
-            // }
+            v = this.meetCurveLineDiscrete(cu, li, nr, board, !alwaysIntersect);
 
             return v;
         },
@@ -1468,80 +1580,6 @@ define([
             return (new Coords(Const.COORDS_BY_USER, [z, cu.X(t), cu.Y(t)], board));
         },
 
-        /**
-         * Intersection of line and curve, continuous case.
-         * Segments are treated as lines. Finding the nr-the intersection point
-         * works for nr=0,1 only.
-         *
-         * @private
-         * @deprecated
-         * @param {JXG.Curve} cu Curve
-         * @param {JXG.Line} li Line
-         * @param {Number} nr Will return the nr-th intersection point.
-         * @param {JXG.Board} board
-         *
-         * BUG: does not respect cu.minX() and cu.maxX()
-         */
-        meetCurveLineContinuousOld: function (cu, li, nr, board) {
-            var t, t2, i, func, z,
-                tnew, steps, delta, tstart, tend, cux, cuy,
-                eps = Mat.eps * 10;
-
-            JXG.deprecated('Geometry.meetCurveLineContinuousOld()', 'Geometry.meetCurveLineContinuous()');
-            func = function (t) {
-                var v = li.stdform[0] + li.stdform[1] * cu.X(t) + li.stdform[2] * cu.Y(t);
-                return v * v;
-            };
-
-            // Find some intersection point
-            if (this.meetCurveLineContinuous.t1memo) {
-                tstart = this.meetCurveLineContinuous.t1memo;
-                t = Numerics.root(func, tstart);
-            } else {
-                tstart = cu.minX();
-                tend = cu.maxX();
-                t = Numerics.root(func, [tstart, tend]);
-            }
-
-            this.meetCurveLineContinuous.t1memo = t;
-            cux = cu.X(t);
-            cuy = cu.Y(t);
-
-            // Find second intersection point
-            if (nr === 1) {
-                if (this.meetCurveLineContinuous.t2memo) {
-                    tstart = this.meetCurveLineContinuous.t2memo;
-                }
-                t2 = Numerics.root(func, tstart);
-
-                if (!(Math.abs(t2 - t) > 0.1 && Math.abs(cux - cu.X(t2)) > 0.1 && Math.abs(cuy - cu.Y(t2)) > 0.1)) {
-                    steps = 20;
-                    delta = (cu.maxX() - cu.minX()) / steps;
-                    tnew = cu.minX();
-
-                    for (i = 0; i < steps; i++) {
-                        t2 = Numerics.root(func, [tnew, tnew + delta]);
-
-                        if (Math.abs(func(t2)) <= eps && Math.abs(t2 - t) > 0.1 && Math.abs(cux - cu.X(t2)) > 0.1 && Math.abs(cuy - cu.Y(t2)) > 0.1) {
-                            break;
-                        }
-
-                        tnew += delta;
-                    }
-                }
-                t = t2;
-                this.meetCurveLineContinuous.t2memo = t;
-            }
-
-            // Is the point on the line?
-            if (Math.abs(func(t)) > eps) {
-                z = NaN;
-            } else {
-                z = 1.0;
-            }
-
-            return (new Coords(Const.COORDS_BY_USER, [z, cu.X(t), cu.Y(t)], board));
-        },
 
         /**
          * Intersection of line and curve, discrete case.
@@ -1578,7 +1616,7 @@ define([
             }
 
             p2 = cu.points[0].usrCoords;
-            for (i = 1; i < len; i++) {
+            for (i = 1; i < len; i += cu.bezierDegree) {
                 p1 = p2.slice(0);
                 p2 = cu.points[i].usrCoords;
                 d = this.distance(p1, p2);
@@ -1595,8 +1633,6 @@ define([
                             lip1.slice(1),
                             lip2.slice(1)
                         ], testSegment);
-
-                        i += 2;
                     } else {
                         res = [this.meetSegmentSegment(p1, p2, lip1, lip2)];
                     }
@@ -1608,7 +1644,7 @@ define([
                                 /**
                                 * If the intersection point is not part of the segment,
                                 * this intersection point is set to non-existent.
-                                * This prevents jumping of the intersection points.
+                                * This prevents jumping behavior of the intersection points.
                                 * But it may be discussed if it is the desired behavior.
                                 */
                                 if (testSegment &&
@@ -1687,32 +1723,46 @@ define([
         },
 
         /**
-         * Intersection of two segments.
-         * @param {Array} p1 First point of segment 1 using homogeneous coordinates [z,x,y]
-         * @param {Array} p2 Second point of segment 1 using homogeneous coordinates [z,x,y]
-         * @param {Array} q1 First point of segment 2 using homogeneous coordinates [z,x,y]
-         * @param {Array} q2 Second point of segment 2 using homogeneous coordinates [z,x,y]
+         * (Virtual) Intersection of two segments.
+         * @param {Array} p1 First point of segment 1 using normalized homogeneous coordinates [1,x,y]
+         * @param {Array} p2 Second point or direction of segment 1 using normalized homogeneous coordinates [1,x,y] or point at infinity [0,x,y], respectively
+         * @param {Array} q1 First point of segment 2 using normalized homogeneous coordinates [1,x,y]
+         * @param {Array} q2 Second point or direction of segment 2 using normalized homogeneous coordinates [1,x,y] or point at infinity [0,x,y], respectively
          * @returns {Array} [Intersection point, t, u] The first entry contains the homogeneous coordinates
-         * of the intersection point. The second and third entry gives the position of the intersection between the
-         * two defining points. For example, the second entry t is defined by: intersection point = t*p1 + (1-t)*p2.
+         * of the intersection point. The second and third entry give the position of the intersection with respect
+         * to the definiting parameters. For example, the second entry t is defined by: intersection point = p1 + t * deltaP, where
+         * deltaP = (p2 - p1) when both parameters are coordinates, and deltaP = p2 if p2 is a point at infinity.
          * If the two segments are collinear, [[0,0,0], Infinity, Infinity] is returned.
          **/
         meetSegmentSegment: function (p1, p2, q1, q2) {
-            var t, u, diff,
+            var t, u, i, d,
                 li1 = Mat.crossProduct(p1, p2),
                 li2 = Mat.crossProduct(q1, q2),
-                c = Mat.crossProduct(li1, li2),
-                denom = c[0];
+                c = Mat.crossProduct(li1, li2);
 
-            if (Math.abs(denom) < Mat.eps) {
+            if (Math.abs(c[0]) < Mat.eps) {
                 return [c, Infinity, Infinity];
             }
 
-            diff = [q1[1] - p1[1], q1[2] - p1[2]];
+            // Normalize the intersection coordinates
+            c[1] /= c[0];
+            c[2] /= c[0];
+            c[0] /= c[0];
 
-            // Because of speed issues, evalute the determinants directly
-            t = (diff[0] * (q2[2] - q1[2]) - diff[1] * (q2[1] - q1[1])) / denom;
-            u = (diff[0] * (p2[2] - p1[2]) - diff[1] * (p2[1] - p1[1])) / denom;
+            // Now compute in principle:
+            //    t = dist(c - p1) / dist(p2 - p1) and
+            //    u = dist(c - q1) / dist(q2 - q1)
+            // However: the points q1, q2, p1, p2 might be ideal points - or in general - the
+            // coordinates might be not normalized.
+            // Note that the z-coordinates of p2 and q2 are used to determine whether it should be interpreted
+            // as a segment coordinate or a direction.
+            i = (Math.abs(p2[1] - p2[0] * p1[1]) < Mat.eps) ? 2 : 1;
+            d = p1[i] / p1[0];
+            t = (c[i] - d) / ( (p2[0] !== 0) ? (p2[i] / p2[0] - d) : p2[i] );
+
+            i = (Math.abs(q2[1] - q2[0] * q1[1]) < Mat.eps) ? 2 : 1;
+            d = q1[i] / q1[0];
+            u = (c[i] - d) / ( (q2[0] !== 0) ? (q2[i] / q2[0] - d) : q2[i] );
 
             return [c, t, u];
         },
@@ -1952,40 +2002,71 @@ define([
          * @returns {Array} The homogeneous coordinates of the nr-th intersection point.
          */
         meetBezierCurveRedBlueSegments: function (red, blue, nr) {
-            var p, i, j,
+            var p, i, j, k, po,
                 redArr, blueArr,
-                bbr, bbb,
-                lenBlue = blue.numberPoints, //points.length,
-                lenRed = red.numberPoints, // points.length,
+                bbr, bbb, intersections,
+                startRed = 0,
+                startBlue = 0,
+                lenBlue = blue.numberPoints,
+                lenRed = red.numberPoints,
                 L = [];
 
-            if (lenBlue < 4 || lenRed < 4) {
+            if (lenBlue < blue.bezierDegree + 1 || lenRed < red.bezierDegree + 1) {
                 return [0, NaN, NaN];
             }
+            lenBlue -= blue.bezierDegree;
+            lenRed  -= red.bezierDegree;
 
-            for (i = 0; i < lenRed - 3; i += 3) {
+            // For sectors, we ignore the "legs"
+            if (red.type === Const.OBJECT_TYPE_SECTOR) {
+                startRed = 3;
+                lenRed  -= 3;
+            }
+            if (blue.type === Const.OBJECT_TYPE_SECTOR) {
+                startBlue = 3;
+                lenBlue  -= 3;
+            }
+
+            for (i = startRed; i < lenRed; i += red.bezierDegree) {
                 p = red.points;
                 redArr = [
-                    [p[i].usrCoords[1], p[i].usrCoords[2]],
-                    [p[i + 1].usrCoords[1], p[i + 1].usrCoords[2]],
-                    [p[i + 2].usrCoords[1], p[i + 2].usrCoords[2]],
-                    [p[i + 3].usrCoords[1], p[i + 3].usrCoords[2]]
+                    p[i].usrCoords.slice(1),
+                    p[i + 1].usrCoords.slice(1)
                 ];
+                if (red.bezierDegree === 3) {
+                    redArr[2] = p[i + 2].usrCoords.slice(1);
+                    redArr[3] = p[i + 3].usrCoords.slice(1);
+                }
 
                 bbr = this._bezierBbox(redArr);
 
-                for (j = 0; j < lenBlue - 3; j += 3) {
+                for (j = startBlue; j < lenBlue; j += blue.bezierDegree) {
                     p = blue.points;
                     blueArr = [
-                        [p[j].usrCoords[1], p[j].usrCoords[2]],
-                        [p[j + 1].usrCoords[1], p[j + 1].usrCoords[2]],
-                        [p[j + 2].usrCoords[1], p[j + 2].usrCoords[2]],
-                        [p[j + 3].usrCoords[1], p[j + 3].usrCoords[2]]
+                        p[j].usrCoords.slice(1),
+                        p[j + 1].usrCoords.slice(1)
                     ];
+                    if (blue.bezierDegree === 3) {
+                        blueArr[2] = p[j + 2].usrCoords.slice(1);
+                        blueArr[3] = p[j + 3].usrCoords.slice(1);
+                    }
 
                     bbb = this._bezierBbox(blueArr);
                     if (this._bezierOverlap(bbr, bbb)) {
-                        L = L.concat(this.meetBeziersegmentBeziersegment(redArr, blueArr));
+                        intersections = this.meetBeziersegmentBeziersegment(redArr, blueArr);
+                        if (intersections.length === 0) {
+                            continue;
+                        }
+                        for (k = 0; k < intersections.length; k++) {
+                            po = intersections[k];
+                            if (po[1] < -Mat.eps ||
+                                po[1] > 1 + Mat.eps ||
+                                po[2] < -Mat.eps ||
+                                po[2] > 1 + Mat.eps) {
+                                continue;
+                            }
+                            L.push(po);
+                        }
                         if (L.length > nr) {
                             return L[nr][0];
                         }
@@ -2257,7 +2338,8 @@ define([
          * @param {JXG.Curve} curve Curve on that the point is projected.
          * @param {JXG.Board} [board=point.board] Reference to a board.
          * @see #projectCoordsToCurve
-         * @returns {JXG.Coords} The coordinates of the projection of the given point on the given graph.
+         * @returns {Array} [JXG.Coords, position] The coordinates of the projection of the given
+         * point on the given graph and the relative position on the curve (real number).
          */
         projectPointToCurve: function (point, curve, board) {
             if (!Type.exists(board)) {
@@ -2269,9 +2351,9 @@ define([
                 t = point.position || 0.0,
                 result = this.projectCoordsToCurve(x, y, t, curve, board);
 
-            point.position = result[1];
+            // point.position = result[1];
 
-            return result[0];
+            return result;
         },
 
         /**
@@ -2284,14 +2366,14 @@ define([
          * @param {JXG.Curve} curve Curve on that the point is projected.
          * @param {JXG.Board} [board=curve.board] Reference to a board.
          * @see #projectPointToCurve
-         * @returns {JXG.Coords} Array containing the coordinates of the projection of the given point on the given graph and
+         * @returns {JXG.Coords} Array containing the coordinates of the projection of the given point on the given curve and
          * the position on the curve.
          */
         projectCoordsToCurve: function (x, y, t, curve, board) {
             var newCoords, newCoordsObj, i, j,
                 mindist, dist, lbda, v, coords, d,
                 p1, p2, res,
-                minfunc, tnew, fnew, fold, delta, steps,
+                minfunc, t_new, f_new, f_old, delta, steps,
                 minX, maxX,
                 infty = Number.POSITIVE_INFINITY;
 
@@ -2360,34 +2442,35 @@ define([
                 minfunc = function (t) {
                     var dx, dy;
                     if (t < curve.minX() || t > curve.maxX()) {
-                        return NaN;
+                        return Infinity;
                     }
                     dx = x - curve.X(t);
                     dy = y - curve.Y(t);
                     return dx * dx + dy * dy;
                 };
 
-                fold = minfunc(t);
+                f_old = minfunc(t);
                 steps = 50;
-                delta = (curve.maxX() - curve.minX()) / steps;
-                tnew = curve.minX();
+                minX = curve.minX();
+                maxX = curve.maxX();
+
+                delta = (maxX - minX) / steps;
+                t_new = minX;
 
                 for (i = 0; i < steps; i++) {
-                    fnew = minfunc(tnew);
+                    f_new = minfunc(t_new);
 
-                    if (fnew < fold || isNaN(fold)) {
-                        t = tnew;
-                        fold = fnew;
+                    if (f_new < f_old || f_old === Infinity) {
+                        t = t_new;
+                        f_old = f_new;
                     }
 
-                    tnew += delta;
+                    t_new += delta;
                 }
 
                 //t = Numerics.root(Numerics.D(minfunc), t);
-                t = Numerics.fminbr(minfunc, [t - delta, t + delta]);
+                t = Numerics.fminbr(minfunc, [Math.max(t - delta, minX), Math.min(t + delta, maxX)]);
 
-                minX = curve.minX();
-                maxX = curve.maxX();
                 // Distinction between closed and open curves is not necessary.
                 // If closed, the cyclic projection shift will work anyhow
                 // if (Math.abs(curve.X(minX) - curve.X(maxX)) < Mat.eps &&
@@ -2422,19 +2505,28 @@ define([
                 len = pol.vertices.length,
                 d_best = Infinity,
                 d,
-                projection,
+                projection, proj,
                 bestprojection;
 
-            for (i = 0; i < len; i++) {
+            for (i = 0; i < len - 1; i++) {
                 projection = JXG.Math.Geometry.projectCoordsToSegment(
                     p,
                     pol.vertices[i].coords.usrCoords,
-                    pol.vertices[(i + 1) % len].coords.usrCoords
+                    pol.vertices[i + 1].coords.usrCoords
                 );
 
-                d = JXG.Math.Geometry.distance(projection[0], p, 3);
-                if (0 <= projection[1] && projection[1] <= 1 && d < d_best) {
-                    bestprojection = projection[0].slice(0);
+                if (0 <= projection[1] && projection[1] <= 1) {
+                    d = JXG.Math.Geometry.distance(projection[0], p, 3);
+                    proj = projection[0];
+                } else if (projection[1] < 0) {
+                    d = JXG.Math.Geometry.distance(pol.vertices[i].coords.usrCoords, p, 3);
+                    proj = pol.vertices[i].coords.usrCoords;
+                } else {
+                    d = JXG.Math.Geometry.distance(pol.vertices[i + 1].coords.usrCoords, p, 3);
+                    proj = pol.vertices[i + 1].coords.usrCoords;
+                }
+                if (d < d_best) {
+                    bestprojection = proj.slice(0);
                     d_best = d;
                 }
             }
@@ -2447,10 +2539,12 @@ define([
          * @param {JXG.Point} point Point to project.
          * @param {JXG.Turtle} turtle on that the point is projected.
          * @param {JXG.Board} [board=point.board] Reference to a board.
-         * @returns {JXG.Coords} The coordinates of the projection of the given point on the given turtle.
+         * @returns {Array} [JXG.Coords, position] Array containing the coordinates of the projection of the given point on the turtle and
+         * the position on the turtle.
          */
         projectPointToTurtle: function (point, turtle, board) {
             var newCoords, t, x, y, i, dist, el, minEl,
+                res, newPos,
                 np = 0,
                 npmin = 0,
                 mindist = Number.POSITIVE_INFINITY,
@@ -2465,13 +2559,15 @@ define([
                 el = turtle.objects[i];
 
                 if (el.elementClass === Const.OBJECT_CLASS_CURVE) {
-                    newCoords = this.projectPointToCurve(point, el);
+                    res = this.projectPointToCurve(point, el);
+                    newCoords = res[0];
+                    newPos = res[1];
                     dist = this.distance(newCoords.usrCoords, point.coords.usrCoords);
 
                     if (dist < mindist) {
                         x = newCoords.usrCoords[1];
                         y = newCoords.usrCoords[2];
-                        t = point.position;
+                        t = newPos;
                         mindist = dist;
                         minEl = el;
                         npmin = np;
@@ -2481,9 +2577,9 @@ define([
             }
 
             newCoords = new Coords(Const.COORDS_BY_USER, [x, y], board);
-            point.position = t + npmin;
-
-            return minEl.updateTransform(newCoords);
+            // point.position = t + npmin;
+            // return minEl.updateTransform(newCoords);
+            return [minEl.updateTransform(newCoords), t + npmin];
         },
 
         /**

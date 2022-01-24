@@ -56,7 +56,8 @@ define([
 
     /**
      * Uses HTML Canvas to implement the rendering methods defined in {@link JXG.AbstractRenderer}.
-     * @class JXG.AbstractRenderer
+     * 
+     * @class JXG.CanvasRenderer
      * @augments JXG.AbstractRenderer
      * @param {Node} container Reference to a DOM node containing the board.
      * @param {Object} dim The dimensions of the board
@@ -88,11 +89,17 @@ define([
                 'px" height="', dim.height,
                 'px"><', '/canvas>'].join('');
             this.canvasRoot = this.container.ownerDocument.getElementById(this.canvasId);
-            this.context =  this.canvasRoot.getContext('2d');
-        } else if (Env.isNode()) {
-            this.canvasId = (typeof module === 'object' ? module.require('canvas') : require('canvas'));
-            this.canvasRoot = new this.canvasId(500, 500);
+            this.canvasRoot.style.display = 'block';
             this.context = this.canvasRoot.getContext('2d');
+
+        } else if (Env.isNode()) {
+            try {
+                this.canvasId = (typeof module === 'object' ? module.require('canvas') : require('canvas'));
+                this.canvasRoot = new this.canvasId(500, 500);
+                this.context = this.canvasRoot.getContext('2d');
+            } catch (err) {
+                console.log("Warning: 'canvas' not found. You might need to call 'npm install canvas'");
+            }
         }
 
         this.dashArray = [[2, 2], [5, 5], [10, 10], [20, 20], [20, 10, 10, 10], [20, 5, 10, 5]];
@@ -114,14 +121,17 @@ define([
          * @see JXG.AbstractRenderer#drawArrows
          * @private
          */
-        _drawFilledPolygon: function (shape, degree) {
+        _drawPolygon: function (shape, degree, doFill) {
             var i, len = shape.length,
                 context = this.context;
 
             if (len > 0) {
+                if (doFill) {
+                    context.lineWidth = 0;
+                }
                 context.beginPath();
                 context.moveTo(shape[0][0], shape[0][1]);
-                if (degree == 1) {
+                if (degree === 1) {
                     for (i = 1; i < len; i++) {
                         context.lineTo(shape[i][0], shape[i][1]);
                     }
@@ -130,10 +140,13 @@ define([
                         context.bezierCurveTo(shape[i][0], shape[i][1], shape[i + 1][0], shape[i + 1][1], shape[i + 2][0], shape[i + 2][1]);
                     }
                 }
-                context.lineTo(shape[0][0], shape[0][1]);
-                context.closePath();
-                context.fill();
-                context.stroke();
+                if (doFill) {
+                    context.lineTo(shape[0][0], shape[0][1]);
+                    context.closePath();
+                    context.fill();
+                } else {
+                    context.stroke();
+                }
             }
         },
 
@@ -553,7 +566,7 @@ define([
          * @param {String} hl String which carries information if the element is highlighted. Used for getting the correct attribute.
          * @private
          */
-        drawArrows: function (el, scr1, scr2, hl) {
+        drawArrows: function (el, scr1, scr2, hl, a) {
              var x1, y1, x2, y2,
                  w0, w,
                  arrowHead,
@@ -561,13 +574,15 @@ define([
                  context = this.context,
                  size = 6,
                  type = 1,
+                 type_fa, type_la,
                  degree_fa = 1,
                  degree_la = 1,
+                 doFill,
                  i, len,
                  d1x, d1y, d2x, d2y, last,
                  ang1, ang2,
-                 ev_fa = Type.evaluate(el.visProp.firstarrow),
-                 ev_la = Type.evaluate(el.visProp.lastarrow);
+                 ev_fa = a.evFirst,
+                 ev_la = a.evLast;
 
             if (Type.evaluate(el.visProp.strokecolor) !== 'none' &&
                      (ev_fa || ev_la)) {
@@ -605,18 +620,13 @@ define([
                 w0 = Type.evaluate(el.visProp[hl + 'strokewidth']);
 
                 if (ev_fa) {
-                    size = 6;
-                    if (Type.exists(ev_fa.size)) {
-                        size = Type.evaluate(ev_fa.size);
-                    }
-                    if (hl !== '' && Type.exists(ev_fa[hl + 'size'])) {
-                        size = Type.evaluate(ev_fa[hl + 'size']);
-                    }
+                    size = a.sizeFirst;
+
                     w = w0 * size;
 
-                    if (Type.exists(ev_fa.type)) {
-                        type = Type.evaluate(ev_fa.type);
-                    }
+                    type = a.typeFirst;
+                    type_fa = type;
+
                     if (type === 2) {
                         arrowTail = [
                                  [ w,      -w * 0.5],
@@ -706,6 +716,25 @@ define([
                             arrowTail[i][0] += 10 * w;
                             arrowTail[i][1] -= 2.84 * w;
                         }
+                    } else if (type === 7) {
+                        w = w0;
+                        degree_fa = 3;
+                        arrowTail = [
+                            [0.00,10.39],
+                            [2.01,6.92],
+                            [5.96,5.20],
+                            [10.00,5.20],
+                            [5.96,5.20],
+                            [2.01,3.47],
+                            [0.00,0.00]
+                        ];
+                        len = arrowTail.length;
+                        for (i = 0; i < len; i++) {
+                            arrowTail[i][0] *= -w;
+                            arrowTail[i][1] *= w;
+                            arrowTail[i][0] += 10 * w;
+                            arrowTail[i][1] -= 5.20 * w;
+                        }
                     } else {
                         arrowTail = [
                              [ w,   -w * 0.5],
@@ -716,18 +745,11 @@ define([
                 }
 
                 if (ev_la) {
-                    size = 6;
-                    if (Type.exists(ev_la.size)) {
-                        size = Type.evaluate(ev_la.size);
-                    }
-                    if (hl !== '' && Type.exists(ev_la[hl + 'size'])) {
-                        size = Type.evaluate(ev_la[hl + 'size']);
-                    }
+                    size = a.sizeLast;
                     w = w0 * size;
 
-                    if (Type.exists(ev_la.type)) {
-                        type = Type.evaluate(ev_la.type);
-                    }
+                    type = a.typeLast;
+                    type_la = type;
                     if (type === 2) {
                         arrowHead = [
                              [ -w, -w * 0.5],
@@ -821,6 +843,26 @@ define([
 
                         }
 
+                    } else if (type === 7) {
+                        w = w0;
+                        degree_la = 3;
+                        arrowHead = [
+                            [0.00,10.39],
+                            [2.01,6.92],
+                            [5.96,5.20],
+                            [10.00,5.20],
+                            [5.96,5.20],
+                            [2.01,3.47],
+                            [0.00,0.00]
+                        ];
+                        len = arrowHead.length;
+                        for (i = 0; i < len; i++) {
+                            arrowHead[i][0] *= w;
+                            arrowHead[i][1] *= w;
+                            arrowHead[i][0] -= 10 * w;
+                            arrowHead[i][1] -= 5.20 * w;
+
+                        }
                     } else {
                         arrowHead = [
                              [ -w, -w * 0.5],
@@ -834,10 +876,20 @@ define([
                 if (this._setColor(el, 'stroke', 'fill')) {
                     this._setColor(el, 'stroke');
                     if (ev_fa) {
-                        this._drawFilledPolygon(this._translateShape(this._rotateShape(arrowTail, ang1), x1, y1), degree_fa);
+                        if (type_fa === 7) {
+                            doFill = false;
+                        } else {
+                            doFill = true;
+                        }
+                        this._drawPolygon(this._translateShape(this._rotateShape(arrowTail, ang1), x1, y1), degree_fa, doFill);
                     }
                     if (ev_la) {
-                        this._drawFilledPolygon(this._translateShape(this._rotateShape(arrowHead, ang2), x2, y2), degree_la);
+                        if (type_la === 7) {
+                            doFill = false;
+                        } else {
+                            doFill = true;
+                        }
+                        this._drawPolygon(this._translateShape(this._rotateShape(arrowHead, ang2), x2, y2), degree_la, doFill);
                     }
                 }
                 context.restore();
@@ -864,6 +916,8 @@ define([
                 margin = -4;
             }
             Geometry.calcStraight(el, c1, c2, margin);
+            this.handleTouchpoints(el, c1, c2, arrowData);
+
             c1_org = new Coords(Const.COORDS_BY_USER, c1.usrCoords, el.board);
             c2_org = new Coords(Const.COORDS_BY_USER, c2.usrCoords, el.board);
 
@@ -877,7 +931,7 @@ define([
             if ((arrowData.evFirst/* && obj.sFirst > 0*/) ||
                 (arrowData.evLast/* && obj.sLast > 0*/)) {
 
-                this.drawArrows(el, c1_org, c2_org, hl);
+                this.drawArrows(el, c1_org, c2_org, hl, arrowData);
             }
         },
 
@@ -935,7 +989,7 @@ define([
 
         // documented in AbstractRenderer
         drawCurve: function (el) {
-            var hl;
+            var hl, w, arrowData;
 
             if (Type.evaluate(el.visProp.handdrawing)) {
                 this.updatePathStringBezierPrim(el);
@@ -944,7 +998,12 @@ define([
             }
             if (el.numberPoints > 1) {
                 hl = this._getHighlighted(el);
-                this.drawArrows(el, null, null, hl);
+                w = Type.evaluate(el.visProp[hl + 'strokewidth']);
+                arrowData = this.getArrowHeadData(el, w, hl);
+                if ((arrowData.evFirst/* && obj.sFirst > 0*/) ||
+                    (arrowData.evLast/* && obj.sLast > 0*/)) {
+                    this.drawArrows(el, null, null, hl, arrowData);
+                }
             }
         },
 
@@ -1005,7 +1064,7 @@ define([
          *    Text related stuff
          * **************************/
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         displayCopyright: function (str, fontSize) {
             var context = this.context;
 
@@ -1018,9 +1077,10 @@ define([
             context.restore();
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         drawInternalText: function (el) {
             var ev_fs = Type.evaluate(el.visProp.fontsize),
+                fontUnit = Type.evaluate(el.visProp.fontunit),
                 ev_ax = el.getAnchorX(),
                 ev_ay = el.getAnchorY(),
                 context = this.context;
@@ -1028,7 +1088,7 @@ define([
             context.save();
             if (this._setColor(el, 'stroke', 'fill') &&
                     !isNaN(el.coords.scrCoords[1] + el.coords.scrCoords[2])) {
-                context.font = (ev_fs > 0 ? ev_fs : 0) + 'px Arial';
+                context.font = (ev_fs > 0 ? ev_fs : 0) + fontUnit + ' Arial';
 
                 this.transformImage(el, el.transformations);
                 if (ev_ax === 'left') {
@@ -1051,7 +1111,7 @@ define([
             return null;
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updateInternalText: function (el) {
             this.drawInternalText(el);
         },
@@ -1097,7 +1157,7 @@ define([
          *    Image related stuff
          * **************************/
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         drawImage: function (el) {
             el.rendNode = new Image();
             // Store the file name of the image.
@@ -1109,7 +1169,7 @@ define([
             this.updateImage(el);
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updateImage: function (el) {
             var context = this.context,
                 o = Type.evaluate(el.visProp.fillopacity),
@@ -1140,7 +1200,7 @@ define([
             }
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         transformImage: function (el, t) {
             var m, len = t.length,
                 ctx = this.context;
@@ -1153,7 +1213,7 @@ define([
             }
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updateImageURL: function (el) {
             var url;
 
@@ -1257,7 +1317,7 @@ define([
             this._stroke(el);
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updatePathStringBezierPrim: function (el) {
             var i, j, k, scr, lx, ly, len,
                 symbm = 'M',
@@ -1363,7 +1423,7 @@ define([
 
         // **************************  Set Attributes *************************
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         display: function(el, val) {
              if (el && el.rendNode) {
                  el.visPropOld.visible = val;
@@ -1395,12 +1455,13 @@ define([
 
         // documented in AbstractRenderer
         setGradient: function (el) {
-            var col, op;
+            var // col,
+                op;
 
             op = Type.evaluate(el.visProp.fillopacity);
             op = (op > 0) ? op : 0;
 
-            col = Type.evaluate(el.visProp.fillcolor);
+            // col = Type.evaluate(el.visProp.fillcolor);
         },
 
         // documented in AbstractRenderer

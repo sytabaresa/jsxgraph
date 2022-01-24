@@ -87,7 +87,7 @@ define([
          * Array holding the x-coordinates of a data plot.
          * This array can be updated during run time by overwriting
          * the method {@link JXG.Curve#updateDataArray}.
-         * @type {array}
+         * @type array
          */
         this.dataX = null;
 
@@ -95,7 +95,7 @@ define([
          * Array holding the y-coordinates of a data plot.
          * This array can be updated during run time by overwriting
          * the method {@link JXG.Curve#updateDataArray}.
-         * @type {array}
+         * @type array
          */
         this.dataY = null;
 
@@ -111,7 +111,7 @@ define([
         /**
          * Stores a quad tree if it is required. The quad tree is generated in the curve
          * updates and can be used to speed up the hasPoint method.
-         * @type {JXG.Math.Quadtree}
+         * @type JXG.Math.Quadtree
          */
         this.qdt = null;
 
@@ -302,7 +302,7 @@ define([
                     t += d;
                 }
             } else if (ev_ct === 'plot' ||
-                        ev_ct === 'functiongraph') {
+                ev_ct === 'functiongraph') {
 
                 if (!Type.exists(start) || start < 0) {
                     start = 0;
@@ -311,7 +311,7 @@ define([
                 if (Type.exists(this.qdt) &&
                     Type.evaluate(this.visProp.useqdt) &&
                     this.bezierDegree !== 3
-                    ) {
+                ) {
                     qdt = this.qdt.query(new Coords(Const.COORDS_BY_USER, [x, y], this.board));
                     points = qdt.points;
                     len = points.length;
@@ -734,7 +734,7 @@ define([
                     // this.updateTransform(this.points[i]);
                     suspendUpdate = true;
                 }
-            // continuous x data
+                // continuous x data
             } else {
                 if (Type.evaluate(this.visProp.doadvancedplot)) {
                     // console.time("plot");
@@ -786,7 +786,7 @@ define([
             }
 
             if (Type.evaluate(this.visProp.curvetype) !== 'plot' &&
-                    Type.evaluate(this.visProp.rdpsmoothing)) {
+                Type.evaluate(this.visProp.rdpsmoothing)) {
                 // console.time("rdp");
                 this.points = Numerics.RamerDouglasPeucker(this.points, 0.2);
                 this.numberPoints = this.points.length;
@@ -1009,7 +1009,7 @@ define([
                 obj;
 
             // Read dependencies found by the JessieCode parser
-            obj = {'xterm': 1, 'yterm': 1};
+            obj = { 'xterm': 1, 'yterm': 1 };
             for (fstr in obj) {
                 if (obj.hasOwnProperty(fstr) && this.hasOwnProperty(fstr) && this[fstr].origin) {
                     isJessieCode = true;
@@ -1035,38 +1035,38 @@ define([
                 by = 0.95 * this.board.canvasHeight;
 
             switch (Type.evaluate(this.visProp.label.position)) {
-            case 'ulft':
-                x = ax;
-                y = ay;
-                break;
-            case 'llft':
-                x = ax;
-                y = by;
-                break;
-            case 'rt':
-                x = bx;
-                y = 0.5 * by;
-                break;
-            case 'lrt':
-                x = bx;
-                y = by;
-                break;
-            case 'urt':
-                x = bx;
-                y = ay;
-                break;
-            case 'top':
-                x = 0.5 * bx;
-                y = ay;
-                break;
-            case 'bot':
-                x = 0.5 * bx;
-                y = by;
-                break;
-            default:
-                // includes case 'lft'
-                x = ax;
-                y = 0.5 * by;
+                case 'ulft':
+                    x = ax;
+                    y = ay;
+                    break;
+                case 'llft':
+                    x = ax;
+                    y = by;
+                    break;
+                case 'rt':
+                    x = bx;
+                    y = 0.5 * by;
+                    break;
+                case 'lrt':
+                    x = bx;
+                    y = by;
+                    break;
+                case 'urt':
+                    x = bx;
+                    y = ay;
+                    break;
+                case 'top':
+                    x = 0.5 * bx;
+                    y = ay;
+                    break;
+                case 'bot':
+                    x = 0.5 * bx;
+                    y = by;
+                    break;
+                default:
+                    // includes case 'lft'
+                    x = ax;
+                    y = 0.5 * by;
             }
 
             c = new Coords(Const.COORDS_BY_SCREEN, [x, y], this.board, false);
@@ -1104,7 +1104,7 @@ define([
             return this;
         },
 
-        // already documented in GeometryElement
+        // Already documented in GeometryElement
         bounds: function () {
             var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity,
                 l = this.points.length, i,
@@ -1113,15 +1113,15 @@ define([
             if (this.bezierDegree === 3) {
                 // Add methods X(), Y()
                 for (i = 0; i < l; i++) {
-                    this.points[i].X = Type.bind(function() { return this.usrCoords[1]; }, this.points[i]);
-                    this.points[i].Y = Type.bind(function() { return this.usrCoords[2]; }, this.points[i]);
+                    this.points[i].X = Type.bind(function () { return this.usrCoords[1]; }, this.points[i]);
+                    this.points[i].Y = Type.bind(function () { return this.usrCoords[2]; }, this.points[i]);
                 }
                 bezier = Numerics.bezier(this.points);
                 up = bezier[3]();
-                minX = Numerics.fminbr(function(t) { return  bezier[0](t); }, [0, up]);
-                maxX = Numerics.fminbr(function(t) { return -bezier[0](t); }, [0, up]);
-                minY = Numerics.fminbr(function(t) { return  bezier[1](t); }, [0, up]);
-                maxY = Numerics.fminbr(function(t) { return -bezier[1](t); }, [0, up]);
+                minX = Numerics.fminbr(function (t) { return bezier[0](t); }, [0, up]);
+                maxX = Numerics.fminbr(function (t) { return -bezier[0](t); }, [0, up]);
+                minY = Numerics.fminbr(function (t) { return bezier[1](t); }, [0, up]);
+                maxY = Numerics.fminbr(function (t) { return -bezier[1](t); }, [0, up]);
 
                 minX = bezier[0](minX);
                 maxX = bezier[0](maxX);
@@ -1169,18 +1169,18 @@ define([
          * @param {Array} where Array containing the x and y coordinate of the target location.
          * @returns {JXG.Curve} Reference to itself.
          */
-        moveTo: function(where) {
+        moveTo: function (where) {
             // TODO add animation
             var delta = [], p;
             if (this.points.length > 0 && !Type.evaluate(this.visProp.fixed)) {
                 p = this.points[0];
                 if (where.length === 3) {
                     delta = [where[0] - p.usrCoords[0],
-                            where[1] - p.usrCoords[1],
-                            where[2] - p.usrCoords[2]];
+                    where[1] - p.usrCoords[1],
+                    where[2] - p.usrCoords[2]];
                 } else {
                     delta = [where[0] - p.usrCoords[1],
-                            where[1] - p.usrCoords[2]];
+                    where[1] - p.usrCoords[2]];
                 }
                 this.setPosition(Const.COORDS_BY_USER, delta);
             }
@@ -1198,14 +1198,14 @@ define([
          * @returns {Array} [Boolean, curve]: Array contining 'true' if curve is result of a transformation,
          *   and the source curve of the transformation.
          */
-        getTransformationSource: function() {
+        getTransformationSource: function () {
             var isTransformed, curve_org;
             if (Type.exists(this._transformationSource)) {
                 curve_org = this._transformationSource;
                 if (curve_org.elementClass === Const.OBJECT_CLASS_CURVE //&&
                     //Type.evaluate(curve_org.visProp.curvetype) !== 'plot'
-                    ) {
-                        isTransformed = true;
+                ) {
+                    isTransformed = true;
                 }
             }
             return [isTransformed, curve_org];
@@ -1380,10 +1380,10 @@ define([
         obj = board.select(parents[0], true);
         if (Type.isObject(obj) &&
             (obj.type === Const.OBJECT_TYPE_CURVE ||
-             obj.type === Const.OBJECT_TYPE_ANGLE ||
-             obj.type === Const.OBJECT_TYPE_ARC   ||
-             obj.type === Const.OBJECT_TYPE_CONIC ||
-             obj.type === Const.OBJECT_TYPE_SECTOR) &&
+                obj.type === Const.OBJECT_TYPE_ANGLE ||
+                obj.type === Const.OBJECT_TYPE_ARC ||
+                obj.type === Const.OBJECT_TYPE_CONIC ||
+                obj.type === Const.OBJECT_TYPE_SECTOR) &&
             Type.isTransformationOrArray(parents[1])) {
 
             if (obj.type === Const.OBJECT_TYPE_SECTOR) {
@@ -1401,17 +1401,17 @@ define([
             attr = Type.copyAttributes(attr, board.options, 'curve');
 
             cu = new JXG.Curve(board, ['x', [], []], attr);
-            cu.updateDataArray = function() {
-                    var i, le = obj.numberPoints;
-                    this.bezierDegree = obj.bezierDegree;
-                    this.dataX = [];
-                    this.dataY = [];
-                    for (i = 0; i < le; i++) {
-                        this.dataX.push(obj.points[i].usrCoords[1]);
-                        this.dataY.push(obj.points[i].usrCoords[2]);
-                    }
-                    return this;
-                };
+            cu.updateDataArray = function () {
+                var i, le = obj.numberPoints;
+                this.bezierDegree = obj.bezierDegree;
+                this.dataX = [];
+                this.dataY = [];
+                for (i = 0; i < le; i++) {
+                    this.dataX.push(obj.points[i].usrCoords[1]);
+                    this.dataY.push(obj.points[i].usrCoords[2]);
+                }
+                return this;
+            };
             cu.addTransform(parents[1]);
             obj.addChild(cu);
             cu.setParents([obj]);
@@ -1560,7 +1560,7 @@ define([
                             if (Type.isPoint(parents[i])) {
                                 x.push(parents[i].X());
                                 y.push(parents[i].Y());
-                            // given as [[x1,y1], [x2, y2], ...]
+                                // given as [[x1,y1], [x2, y2], ...]
                             } else if (Type.isArray(parents[i]) && parents[i].length === 2) {
                                 for (j = 0; j < parents.length; j++) {
                                     if (Type.isFunction(parents[j][0])) {
@@ -1591,12 +1591,12 @@ define([
                 return Numerics.splineEval(t, x, y, D);
             },
             // minX()
-            function() {
+            function () {
                 return x[0];
             },
             //maxX()
-            function() {
-                return x[x.length -1];
+            function () {
+                return x[x.length - 1];
             }];
 
         };
@@ -1675,7 +1675,7 @@ define([
      * </script><pre>
      */
     JXG.createCardinalSpline = function (board, parents, attributes) {
-        var el,
+        var el, getPointLike,
             points, tau, type,
             p, q, i, le,
             splineArr,
@@ -1723,7 +1723,7 @@ define([
                     q.push(board.select(p[i]));
                 } else if (Type.isPoint(p[i])) {
                     q.push(p[i]);
-                // given as [[x0,y0], [x1, y2], ...]
+                    // given as [[x0,y0], [x1, y2], ...]
                 } else if (Type.isArray(p[i]) && p[i].length === 2) {
                     q[i] = [];
                     if (Type.isFunction(p[i][0])) {
@@ -1747,22 +1747,27 @@ define([
             points = Type.providePoints(board, q, attributes, 'cardinalspline', ['points']);
         } else {
             points = [];
+
+            /**
+             * @ignore
+             */
+            getPointLike = function (ii) {
+                return {
+                    X: function () { return q[ii][0]; },
+                    Y: function () { return q[ii][1]; },
+                    Dist: function (p) {
+                        var dx = this.X() - p.X(),
+                            dy = this.Y() - p.Y();
+                        return Math.sqrt(dx * dx + dy * dy);
+                    }
+                };
+            };
+
             for (i = 0; i < q.length; i++) {
                 if (Type.isPoint(q[i])) {
                     points.push(q[i]);
                 } else {
-                    points.push(
-                        (function(ii) { return {
-                            X: function() { return q[ii][0]; },
-                            Y: function() { return q[ii][1]; },
-                            Dist: function(p) {
-                                    var dx = this.X() - p.X(),
-                                        dy = this.Y() - p.Y();
-                                    return Math.sqrt(dx * dx + dy * dy);
-                                }
-                            };
-                        })(i)
-                    );
+                    points.push(getPointLike(i));
                 }
             }
         }
@@ -1776,8 +1781,14 @@ define([
         le = points.length;
         el.setParents(points);
         for (i = 0; i < le; i++) {
-            if (Type.isPoint(points[i])) {
-                points[i].addChild(el);
+            p = points[i];
+            if (Type.isPoint(p)) {
+                if (Type.exists(p._is_new)) {
+                    el.addChild(p);
+                    delete p._is_new;
+                } else {
+                    p.addChild(el);
+                }
             }
         }
         el.elType = 'cardinalspline';
@@ -1886,7 +1897,7 @@ define([
      *
      */
     JXG.createMetapostSpline = function (board, parents, attributes) {
-        var el,
+        var el, getPointLike,
             points, controls,
             p, q, i, le,
             errStr = "\nPossible parent types: [points:array, controls:object";
@@ -1930,7 +1941,7 @@ define([
                     q.push(board.select(p[i]));
                 } else if (Type.isPoint(p[i])) {
                     q.push(p[i]);
-                // given as [[x0,y0], [x1, y2], ...]
+                    // given as [[x0,y0], [x1, y2], ...]
                 } else if (Type.isArray(p[i]) && p[i].length === 2) {
                     q[i] = [];
                     if (Type.isFunction(p[i][0])) {
@@ -1954,17 +1965,22 @@ define([
             points = Type.providePoints(board, q, attributes, 'metapostspline', ['points']);
         } else {
             points = [];
+
+            /**
+             * @ignore
+             */
+            getPointLike = function (ii) {
+                return {
+                    X: function () { return q[ii][0]; },
+                    Y: function () { return q[ii][1]; }
+                };
+            };
+
             for (i = 0; i < q.length; i++) {
                 if (Type.isPoint(q[i])) {
                     points.push(q[i]);
                 } else {
-                    points.push(
-                        (function(ii) { return {
-                            X: function() { return q[ii][0]; },
-                            Y: function() { return q[ii][1]; }
-                            };
-                        })(i)
-                    );
+                    points.push(getPointLike);
                 }
             }
         }
@@ -2000,7 +2016,6 @@ define([
     };
 
     JXG.registerElement('metapostspline', JXG.createMetapostSpline);
-
 
     /**
      * @class This element is used to provide a constructor for Riemann sums, which is realized as a special curve.
@@ -2112,6 +2127,9 @@ define([
             return this.sum;
         };
 
+        /**
+         * @ignore
+         */
         c.updateDataArray = function () {
             var u = Numerics.riemann(f, n(), type(), this.minX(), this.maxX());
             this.dataX = u[0];
@@ -2178,7 +2196,10 @@ define([
         attr.curvetype = 'plot';
         c = board.create('curve', [[0], [0]], attr);
 
-        c.updateDataArray = function () {
+        /**
+         * @ignore
+         */
+         c.updateDataArray = function () {
             var i, step, t, el, pEl, x, y, from, savetrace,
                 le = attr.numberpoints,
                 savePos = glider.position,
@@ -2302,7 +2323,10 @@ define([
 
         attr = Type.copyAttributes(attributes, board.options, 'stepfunction');
         c = board.create('curve', parents, attr);
-        c.updateDataArray = function () {
+        /**
+         * @ignore
+         */
+         c.updateDataArray = function () {
             var i, j = 0,
                 len = this.xterm.length;
 
@@ -2378,10 +2402,10 @@ define([
         dy = Numerics.D(curve.Y);
 
         c = board.create('curve', [
-                function(t) { return curve.X(t); },
-                function(t) { return dy(t) / dx(t); },
-                curve.minX(), curve.maxX()
-            ], attr);
+            function (t) { return curve.X(t); },
+            function (t) { return dy(t) / dx(t); },
+            curve.minX(), curve.maxX()
+        ], attr);
 
         c.setParents(curve);
 
@@ -2390,14 +2414,349 @@ define([
 
     JXG.registerElement('derivative', JXG.createDerivative);
 
+    /**
+     * @class Intersection of two closed path elements. The elements may be of type curve, circle, polygon, inequality.
+     * If one element is a curve, it has to be closed.
+     * The resulting element is of type curve.
+     * @pseudo
+     * @description
+     * @name CurveIntersection
+     * @param {JXG.Curve|JXG.Polygon|JXG.Circle} curve1 First element which is intersected
+     * @param {JXG.Curve|JXG.Polygon|JXG.Circle} curve2 Second element which is intersected
+     * @augments JXG.Curve
+     * @constructor
+     * @type JXG.Curve
+     *
+     * @example
+     * var f = board.create('functiongraph', ['cos(x)']);
+     * var ineq = board.create('inequality', [f], {inverse: true, fillOpacity: 0.1});
+     * var circ = board.create('circle', [[0,0], 4]);
+     * var clip = board.create('curveintersection', [ineq, circ], {fillColor: 'yellow', fillOpacity: 0.6});
+     *
+     * </pre><div id="JXGe2948257-8835-4276-9164-8acccb48e8d4" class="jxgbox" style="width: 300px; height: 300px;"></div>
+     * <script type="text/javascript">
+     *     (function() {
+     *         var board = JXG.JSXGraph.initBoard('JXGe2948257-8835-4276-9164-8acccb48e8d4',
+     *             {boundingbox: [-8, 8, 8,-8], axis: true, showcopyright: false, shownavigation: false});
+     *     var f = board.create('functiongraph', ['cos(x)']);
+     *     var ineq = board.create('inequality', [f], {inverse: true, fillOpacity: 0.1});
+     *     var circ = board.create('circle', [[0,0], 4]);
+     *     var clip = board.create('curveintersection', [ineq, circ], {fillColor: 'yellow', fillOpacity: 0.6});
+     *
+     *     })();
+     *
+     * </script><pre>
+     *
+     */
+    JXG.createCurveIntersection = function (board, parents, attributes) {
+        var c;
+
+        if (parents.length !== 2) {
+            throw new Error("JSXGraph: Can't create curve intersection with given parent'" +
+                "\nPossible parent types: [array, array|function]");
+        }
+
+        c = board.create('curve', [[], []], attributes);
+        /**
+         * @ignore
+         */
+         c.updateDataArray = function () {
+            var a = JXG.Math.Clip.intersection(parents[0], parents[1], this.board);
+            this.dataX = a[0];
+            this.dataY = a[1];
+        };
+        return c;
+    };
+
+    /**
+     * @class Union of two closed path elements. The elements may be of type curve, circle, polygon, inequality.
+     * If one element is a curve, it has to be closed.
+     * The resulting element is of type curve.
+     * @pseudo
+     * @description
+     * @name CurveUnion
+     * @param {JXG.Curve|JXG.Polygon|JXG.Circle} curve1 First element defining the union
+     * @param {JXG.Curve|JXG.Polygon|JXG.Circle} curve2 Second element defining the union
+     * @augments JXG.Curve
+     * @constructor
+     * @type JXG.Curve
+     *
+     * @example
+     * var f = board.create('functiongraph', ['cos(x)']);
+     * var ineq = board.create('inequality', [f], {inverse: true, fillOpacity: 0.1});
+     * var circ = board.create('circle', [[0,0], 4]);
+     * var clip = board.create('curveunion', [ineq, circ], {fillColor: 'yellow', fillOpacity: 0.6});
+     *
+     * </pre><div id="JXGe2948257-8835-4276-9164-8acccb48e8d4" class="jxgbox" style="width: 300px; height: 300px;"></div>
+     * <script type="text/javascript">
+     *     (function() {
+     *         var board = JXG.JSXGraph.initBoard('JXGe2948257-8835-4276-9164-8acccb48e8d4',
+     *             {boundingbox: [-8, 8, 8,-8], axis: true, showcopyright: false, shownavigation: false});
+     *     var f = board.create('functiongraph', ['cos(x)']);
+     *     var ineq = board.create('inequality', [f], {inverse: true, fillOpacity: 0.1});
+     *     var circ = board.create('circle', [[0,0], 4]);
+     *     var clip = board.create('curveunion', [ineq, circ], {fillColor: 'yellow', fillOpacity: 0.6});
+     *
+     *     })();
+     *
+     * </script><pre>
+     *
+     */
+    JXG.createCurveUnion = function (board, parents, attributes) {
+        var c;
+
+        if (parents.length !== 2) {
+            throw new Error("JSXGraph: Can't create curve union with given parent'" +
+                "\nPossible parent types: [array, array|function]");
+        }
+
+        c = board.create('curve', [[], []], attributes);
+        /**
+         * @ignore
+         */
+         c.updateDataArray = function () {
+            var a = JXG.Math.Clip.union(parents[0], parents[1], this.board);
+            this.dataX = a[0];
+            this.dataY = a[1];
+        };
+        return c;
+    };
+
+    /**
+     * @class Difference of two closed path elements. The elements may be of type curve, circle, polygon, inequality.
+     * If one element is a curve, it has to be closed.
+     * The resulting element is of type curve.
+     * @pseudo
+     * @description
+     * @name CurveDifference
+     * @param {JXG.Curve|JXG.Polygon|JXG.Circle} curve1 First element from which the second element is "subtracted"
+     * @param {JXG.Curve|JXG.Polygon|JXG.Circle} curve2 Second element which is subtracted from the first element
+     * @augments JXG.Curve
+     * @constructor
+     * @type JXG.Curve
+     *
+     * @example
+     * var f = board.create('functiongraph', ['cos(x)']);
+     * var ineq = board.create('inequality', [f], {inverse: true, fillOpacity: 0.1});
+     * var circ = board.create('circle', [[0,0], 4]);
+     * var clip = board.create('curvedifference', [ineq, circ], {fillColor: 'yellow', fillOpacity: 0.6});
+     *
+     * </pre><div id="JXGe2948257-8835-4276-9164-8acccb48e8d4" class="jxgbox" style="width: 300px; height: 300px;"></div>
+     * <script type="text/javascript">
+     *     (function() {
+     *         var board = JXG.JSXGraph.initBoard('JXGe2948257-8835-4276-9164-8acccb48e8d4',
+     *             {boundingbox: [-8, 8, 8,-8], axis: true, showcopyright: false, shownavigation: false});
+     *     var f = board.create('functiongraph', ['cos(x)']);
+     *     var ineq = board.create('inequality', [f], {inverse: true, fillOpacity: 0.1});
+     *     var circ = board.create('circle', [[0,0], 4]);
+     *     var clip = board.create('curvedifference', [ineq, circ], {fillColor: 'yellow', fillOpacity: 0.6});
+     *
+     *     })();
+     *
+     * </script><pre>
+     *
+     */
+    JXG.createCurveDifference = function (board, parents, attributes) {
+        var c;
+
+        if (parents.length !== 2) {
+            throw new Error("JSXGraph: Can't create curve difference with given parent'" +
+                "\nPossible parent types: [array, array|function]");
+        }
+
+        c = board.create('curve', [[], []], attributes);
+        /**
+         * @ignore
+         */
+         c.updateDataArray = function () {
+            var a = JXG.Math.Clip.difference(parents[0], parents[1], this.board);
+            this.dataX = a[0];
+            this.dataY = a[1];
+        };
+        return c;
+    };
+
+    JXG.registerElement('curvedifference', JXG.createCurveDifference);
+    JXG.registerElement('curveintersection', JXG.createCurveIntersection);
+    JXG.registerElement('curveunion', JXG.createCurveUnion);
+
+    /**
+     * @class Box plot curve. The direction of the box plot can be either vertical or horizontal which
+     * is controlled by the attribute "dir".
+     * @pseudo
+     * @description
+     * @name Boxplot
+     * @param {Array} quantiles Array conatining at least five quantiles. The elements can be of type number, function or string.
+     * @param {Number|Function} axis Axis position of the box plot
+     * @param {Number|Function} width Width of the rectangle part of the box plot. The width of the first and 4th quantile
+     * is relative to this width and can be controlled by the attribute "smallWidth".
+     * @augments JXG.Curve
+     * @constructor
+     * @type JXG.Curve
+     *
+     * @example
+     * var Q = [ -1, 2, 3, 3.5, 5 ];
+     *
+     * var b = board.create('boxplot', [Q, 2, 4], {strokeWidth: 3});
+     *
+     * </pre><div id="JXG13eb23a1-a641-41a2-be11-8e03e400a947" class="jxgbox" style="width: 300px; height: 300px;"></div>
+     * <script type="text/javascript">
+     *     (function() {
+     *         var board = JXG.JSXGraph.initBoard('JXG13eb23a1-a641-41a2-be11-8e03e400a947',
+     *             {boundingbox: [-8, 8, 8,-8], axis: true, showcopyright: false, shownavigation: false});
+     *     var Q = [ -1, 2, 3, 3.5, 5 ];
+     *     var b = board.create('boxplot', [Q, 2, 4], {strokeWidth: 3});
+     *
+     *     })();
+     *
+     * </script><pre>
+     *
+     * @example
+     * var Q = [ -1, 2, 3, 3.5, 5 ];
+     * var b = board.create('boxplot', [Q, 3, 4], {dir: 'horizontal', smallWidth: 0.25, color:'red'});
+     *
+     * </pre><div id="JXG0deb9cb2-84bc-470d-a6db-8be9a5694813" class="jxgbox" style="width: 300px; height: 300px;"></div>
+     * <script type="text/javascript">
+     *     (function() {
+     *         var board = JXG.JSXGraph.initBoard('JXG0deb9cb2-84bc-470d-a6db-8be9a5694813',
+     *             {boundingbox: [-8, 8, 8,-8], axis: true, showcopyright: false, shownavigation: false});
+     *     var Q = [ -1, 2, 3, 3.5, 5 ];
+     *     var b = board.create('boxplot', [Q, 3, 4], {dir: 'horizontal', smallWidth: 0.25, color:'red'});
+     *
+     *     })();
+     *
+     * </script><pre>
+     *
+     * @example
+     * var data = [57, 57, 57, 58, 63, 66, 66, 67, 67, 68, 69, 70, 70, 70, 70, 72, 73, 75, 75, 76, 76, 78, 79, 81];
+     * var Q = [];
+     *
+     * Q[0] = JXG.Math.Statistics.min(data);
+     * Q = Q.concat(JXG.Math.Statistics.percentile(data, [25, 50, 75]));
+     * Q[4] = JXG.Math.Statistics.max(data);
+     *
+     * var b = board.create('boxplot', [Q, 0, 3]);
+     *
+     * </pre><div id="JXGef079e76-ae99-41e4-af29-1d07d83bf85a" class="jxgbox" style="width: 300px; height: 300px;"></div>
+     * <script type="text/javascript">
+     *     (function() {
+     *         var board = JXG.JSXGraph.initBoard('JXGef079e76-ae99-41e4-af29-1d07d83bf85a',
+     *             {boundingbox: [-5,90,5,30], axis: true, showcopyright: false, shownavigation: false});
+     *     var data = [57, 57, 57, 58, 63, 66, 66, 67, 67, 68, 69, 70, 70, 70, 70, 72, 73, 75, 75, 76, 76, 78, 79, 81];
+     *     var Q = [];
+     *
+     *     Q[0] = JXG.Math.Statistics.min(data);
+     *     Q = Q.concat(JXG.Math.Statistics.percentile(data, [25, 50, 75]));
+     *     Q[4] = JXG.Math.Statistics.max(data);
+     *
+     *     var b = board.create('boxplot', [Q, 0, 3]);
+     *
+     *     })();
+     *
+     * </script><pre>
+     *
+     * @example
+     * var mi = board.create('glider', [0, -1, board.defaultAxes.y]);
+     * var ma = board.create('glider', [0, 5, board.defaultAxes.y]);
+     * var Q = [function() { return mi.Y(); }, 2, 3, 3.5, function() { return ma.Y(); }];
+     *
+     * var b = board.create('boxplot', [Q, 0, 2]);
+     *
+     * </pre><div id="JXG3b3225da-52f0-42fe-8396-be9016bf289b" class="jxgbox" style="width: 300px; height: 300px;"></div>
+     * <script type="text/javascript">
+     *     (function() {
+     *         var board = JXG.JSXGraph.initBoard('JXG3b3225da-52f0-42fe-8396-be9016bf289b',
+     *             {boundingbox: [-8, 8, 8,-8], axis: true, showcopyright: false, shownavigation: false});
+     *     var mi = board.create('glider', [0, -1, board.defaultAxes.y]);
+     *     var ma = board.create('glider', [0, 5, board.defaultAxes.y]);
+     *     var Q = [function() { return mi.Y(); }, 2, 3, 3.5, function() { return ma.Y(); }];
+     *
+     *     var b = board.create('boxplot', [Q, 0, 2]);
+     *
+     *     })();
+     *
+     * </script><pre>
+     *
+     */
+    JXG.createBoxPlot = function (board, parents, attributes) {
+        var box, i, len, w2,
+            attr = Type.copyAttributes(attributes, board.options, 'boxplot');
+
+        if (parents.length !== 3) {
+            throw new Error("JSXGraph: Can't create box plot with given parent'" +
+                "\nPossible parent types: [array, number|function, number|function] containing quantiles, axis, width");
+        }
+        if (parents[0].length < 5) {
+            throw new Error("JSXGraph: Can't create box plot with given parent[0]'" +
+                "\nparent[0] has to conatin at least 5 quantiles.");
+        }
+        box = board.create('curve', [[],[]], attr);
+
+        len = parents[0].length; // Quantiles
+        box.Q = [];
+        for (i = 0; i < len; i++) {
+            box.Q[i] = Type.createFunction(parents[0][i], board, null, true);
+        }
+        box.x = Type.createFunction(parents[1], board, null, true);
+        box.w = Type.createFunction(parents[2], board, null, true);
+
+        box.updateDataArray = function() {
+            var v1, v2, l1, l2, r1, r2, w2, dir, x;
+
+            w2  = Type.evaluate(this.visProp.smallwidth);
+            dir = Type.evaluate(this.visProp.dir);
+            x = this.x();
+            l1 = x - this.w() * 0.5;
+            l2 = x - this.w() * 0.5 * w2;
+            r1 = x + this.w() * 0.5;
+            r2 = x + this.w() * 0.5 * w2;
+            v1 = [x, l2, r2, x, x, l1, l1, r1, r1, x, NaN, l1, r1, NaN, x, x, l2, r2, x];
+            v2 = [this.Q[0](),
+                    this.Q[0](),
+                    this.Q[0](),
+                    this.Q[0](),
+                    this.Q[1](),
+                    this.Q[1](),
+                    this.Q[3](),
+                    this.Q[3](),
+                    this.Q[1](),
+                    this.Q[1](),
+                    NaN,
+                    this.Q[2](),
+                    this.Q[2](),
+                    NaN,
+                    this.Q[3](),
+                    this.Q[4](),
+                    this.Q[4](),
+                    this.Q[4](),
+                    this.Q[4]()];
+            if (dir === 'vertical') {
+                this.dataX = v1;
+                this.dataY = v2;
+            } else {
+                this.dataX = v2;
+                this.dataY = v1;
+            }
+        };
+        return box;
+    };
+
+    JXG.registerElement('boxplot', JXG.createBoxPlot);
+
     return {
         Curve: JXG.Curve,
+        createCardinalSpline: JXG.createCardinalSpline,
         createCurve: JXG.createCurve,
+        createCurveDifference: JXG.createCurveDifference,
+        createCurveIntersection: JXG.createCurveIntersection,
+        createCurveUnion: JXG.createCurveUnion,
+        createDerivative: JXG.createDerivative,
         createFunctiongraph: JXG.createFunctiongraph,
-        createPlot: JXG.createPlot,
+        createMetapostSpline: JXG.createMetapostSpline,
+        createPlot: JXG.createFunctiongraph,
         createSpline: JXG.createSpline,
         createRiemannsum: JXG.createRiemannsum,
-        createTracecurve: JXG.createTracecurve,
-        createStepfunction: JXG.createStepfunction
+        createStepfunction: JXG.createStepfunction,
+        createTracecurve: JXG.createTracecurve
     };
 });

@@ -213,7 +213,7 @@ define([
              * axis:true in {@link JXG.JSXGraph#initBoard}.
              *
              * @name JXG.Board#defaultAxes
-             * @type {Object}
+             * @type Object
              * @default {x: {name:'x'}, y: {name: 'y'}}
              *
              */
@@ -299,7 +299,7 @@ define([
              * </ul>
              *
              * @name JXG.Board#screenshot
-             * @type {Object}
+             * @type Object
              */
             screenshot: {
                 scale: 1.0,
@@ -324,7 +324,9 @@ define([
              * controls if the icon is shown.
              * The following attribute(s) can be set:
              * <ul>
-             *  <li>symbol: Unicode symbol which is shown in the navigation bar. Default: '\u25a1'
+             *  <li>symbol (String): Unicode symbol which is shown in the navigation bar. Default: '\u25a1'
+             *  <li>id (String): Id of the HTML element which is brought to full screen or null if the JSXgraph div is taken.
+             * It may be an outer div element, e.g. if the old aspect ratio trick is used. Default: null, i.e. use the JSXGraph div.
              * </ul>
              *
              * @example
@@ -355,10 +357,11 @@ define([
              *
              * @name JXG.Board#fullscreen
              * @see JXG.Board#showFullscreen
-             * @type {Object}
+             * @type Object
              */
             fullscreen: {
-                symbol: '\u26f6' //'\u25a1'
+                symbol: '\u25a1', // '\u26f6' (not supported by MacOS), // '\u25a1'
+                id: null
             },
 
             /**
@@ -490,7 +493,10 @@ define([
 
             /**
              * Change redraw strategy in SVG rendering engine.
-             *
+             * <p>
+             * This optimization seems to be <b>obsolete</b> in newer browsers (from 2021 on, at least)
+             * and even slow down the constructions. Therefore, the default is set to 'none' since v1.2.4.
+             * <p>
              * If set to 'svg', before every redrawing of the JSXGraph construction
              * the SVG sub-tree of the DOM tree is taken out of the DOM.
              *
@@ -501,11 +507,12 @@ define([
              * Using 'svg' or 'all' speeds up the update process considerably. The risk
              * is that if there is an exception, only a white div or window is left.
              *
+             *
              * @name JXG.Board#minimizeReflow
              * @type String
-             * @default 'svg'
+             * @default 'none'
              */
-            minimizeReflow: 'svg',
+            minimizeReflow: 'none',
 
             /**
              * A number that will be added to the absolute position of the board used in mouse coordinate
@@ -539,13 +546,13 @@ define([
              *   factorY: 1.25,  // vertical zoom factor (multiplied to {@link JXG.Board#zoomY})
              *   wheel: true,     // allow zooming by mouse wheel or
              *   				   // by pinch-to-toom gesture on touch devices
-             *   needShift: true, // mouse wheel zooming needs pressing of the shift key
-             *   min: 0.001        // minimal values of {@link JXG.Board#zoomX} and {@link JXG.Board#zoomY}, limits zoomOut
-             *   max: 1000.0       // maximal values of {@link JXG.Board#zoomX} and {@link JXG.Board#zoomY}, limits zoomIn
+             *   needShift: true,   // mouse wheel zooming needs pressing of the shift key
+             *   min: 0.001,        // minimal values of {@link JXG.Board#zoomX} and {@link JXG.Board#zoomY}, limits zoomOut
+             *   max: 1000.0,       // maximal values of {@link JXG.Board#zoomX} and {@link JXG.Board#zoomY}, limits zoomIn
              *
-             *   pinchHorizontal: true // Allow pinch-to-zoom to zoom only horizontal axis
-             *   pinchVertical: true   // Allow pinch-to-zoom to zoom only vertical axis
-             *   pinchSensitivity: 7   // Sensitivity (in degrees) for recognizing horizontal or vertical pinch-to-zoom gestures.
+             *   pinchHorizontal: true, // Allow pinch-to-zoom to zoom only horizontal axis
+             *   pinchVertical: true,   // Allow pinch-to-zoom to zoom only vertical axis
+             *   pinchSensitivity: 7    // Sensitivity (in degrees) for recognizing horizontal or vertical pinch-to-zoom gestures.
              * }
              * </pre>
              *
@@ -606,6 +613,154 @@ define([
             drag: {
                 enabled: true
             },
+
+            /**
+             * Control using the keyboard to change the construction.
+             * <ul>
+             * <li> enabled: true / false
+             * <li> dx: horizontal shift amount per key press
+             * <li> dy: vertical shift amount per key press
+             * <li> panShift: zoom if shift key is pressed
+             * <li> panCtrl: zoom if ctrl key is pressed
+             * </ul>
+             *
+             * @example
+             * var board = JXG.JSXGraph.initBoard("jxgbox", {boundingbox: [-5,5,5,-5],
+             *     axis: true,
+             *     showCopyright:true,
+             *     showNavigation:true,
+             *     keyboard: {
+             *         enabled: true,
+             *         dy: 30,
+             *         panShift: true,
+             *         panCtrl: false
+             *     }
+             * });
+             *
+             * </pre><div id="JXGb1d3aab6-ced2-4fe9-8fa5-b0accc8c7266" class="jxgbox" style="width: 300px; height: 300px;"></div>
+             * <script type="text/javascript">
+             *     (function() {
+             *         var board = JXG.JSXGraph.initBoard('JXGb1d3aab6-ced2-4fe9-8fa5-b0accc8c7266',
+             *             {boundingbox: [-5,5,5,-5],
+             *         axis: true,
+             *         showCopyright:true,
+             *         showNavigation:true,
+             *         keyboard: {
+             *             enabled: true,
+             *             dy: 30,
+             *             panShift: true,
+             *             panCtrl: false
+             *         }
+             *     });
+             *
+             *     })();
+             *
+             * </script><pre>
+             *
+             *
+             * @see JXG.Board#keyDownListener
+             * @see JXG.Board#keyFocusInListener
+             * @see JXG.Board#keyFocusOutListener
+             *
+             * @name JXG.Board#keyboard
+             * @type Object
+             * @default {enabled: true, dx: 10, dy:10, panShift: true, panCtrl: false}
+             */
+            keyboard: {
+                enabled: true,
+                dx: 10,
+                dy: 10,
+                panShift: true,
+                panCtrl: false
+            },
+
+            /**
+             * Control if JSXGraph reacts to resizing of the JSXGraph container element
+             * by the user / browser.
+             * The attribute "throttle" determines the minimal time in msec between to
+             * resize calls.
+             *
+             * @see JXG.Board#startResizeObserver
+             * @see JXG.Board#resizeListener
+             *
+             * @name JXG.Board#resize
+             * @type Object
+             * @default {enabled: true, throttle: 10}
+             *
+             * @example
+             *     var board = JXG.JSXGraph.initBoard('jxgbox', {
+             *         boundingbox: [-5,5,5,-5],
+             *         keepAspectRatio: true,
+             *         axis: true,
+             *         resize: {enabled: true, throttle: 200}
+             *     });
+             *
+             * </pre><div id="JXGb55d4608-5d71-4bc3-b332-18c15fbda8c3" class="jxgbox" style="width: 300px; height: 300px;"></div>
+             * <script type="text/javascript">
+             *     (function() {
+             *         var board = JXG.JSXGraph.initBoard('JXGb55d4608-5d71-4bc3-b332-18c15fbda8c3', {
+             *             boundingbox: [-5,5,5,-5],
+             *             keepAspectRatio: true,
+             *             axis: true,
+             *             resize: {enabled: true, throttle: 200}
+             *         });
+             *
+             *     })();
+             *
+             * </script><pre>
+             *
+             *
+             */
+            resize: {
+                enabled: true,
+                throttle: 10
+            },
+
+            /**
+             * Element which listens to move events of the pointing device.
+             * This allows to drag elements of a JSXGraph construction outside of the board.
+             * Especially, on mobile devices this enhances the user experience.
+             * However, it is recommended to allow dragging outside of the JSXGraph board only
+             * in certain constructions where users may not "loose" points outside of the board.
+             * Then points may become unreachable.
+             * <p>
+             * A situation where dragging outside of the board is uncritical is for example if
+             * only sliders are used to interact with the construction.
+             * <p>
+             * Possible values for this attributes are:
+             * <ul>
+             * <li> an element specified by document.getElementById('some id');
+             * <li> null: to use the JSXgraph container div element
+             * <li> document
+             * </ul>
+             *
+             * @name JXG.Board#moveTarget
+             * @type HTML node or document
+             * @default null
+             *
+             * @example
+             *     var board = JXG.JSXGraph.initBoard('jxgbox', {
+             *         boundingbox: [-5,5,5,-5],
+             *         axis: true,
+             *         moveTarget: document
+             *     });
+             *
+             * </pre><div id="JXG973457e5-c63f-4516-8570-743f2cc560e1" class="jxgbox" style="width: 300px; height: 300px;"></div>
+             * <script type="text/javascript">
+             *     (function() {
+             *         var board = JXG.JSXGraph.initBoard('JXG973457e5-c63f-4516-8570-743f2cc560e1',
+             *             {boundingbox: [-5,5,5,-5],
+             *             axis: true,
+             *             moveTarget: document
+             *         });
+             *
+             *     })();
+             *
+             * </script><pre>
+             *
+             *
+             */
+            moveTarget: null,
 
             /**
              * Control the possibilities for a selection rectangle.
@@ -701,7 +856,7 @@ define([
          * </pre>
          * These settings are overruled by the CSS class 'JXG_navigation'.
          * @deprecated
-         * @type {Object}
+         * @type Object
          * @name JXG.Options#navbar
          *
          */
@@ -740,7 +895,7 @@ define([
              * @see JXG.GeometryElement#highlightStrokeOpacity
              * @default {@link JXG.Options.elements.color#strokeColor}
              */
-            strokeColor: '#0000ff',
+            strokeColor: Color.palette.blue,
 
             /**
              * The stroke color of the given geometry element when the user moves the mouse over it.
@@ -752,7 +907,7 @@ define([
              * @see JXG.GeometryElement#highlightStrokeOpacity
              * @default {@link JXG.Options.elements.color#highlightStrokeColor}
              */
-            highlightStrokeColor: '#C3D9FF',
+            highlightStrokeColor: '#c3d9ff',
 
             /**
              * The fill color of this geometry element.
@@ -763,7 +918,7 @@ define([
              * @see JXG.GeometryElement#highlightFillOpacity
              * @default {@link JXG.Options.elements.color#fillColor}
              */
-            fillColor: 'red',
+            fillColor: Color.palette.red,
 
             /**
              * The fill color of the given geometry element when the mouse is pointed over it.
@@ -1295,7 +1450,7 @@ define([
              * This attributes takes either the value 'inherit' or an object of the form:
              * <pre>
              * precision: {
-             *      touch: 15,
+             *      touch: 30,
              *      mouse: 4,
              *      pen: 4
              * }
@@ -1331,7 +1486,11 @@ define([
              * @private
              * By default, an element is not a label. Do not change this.
              */
-            isLabel: false
+            isLabel: false,
+
+
+            tabindex: 0
+
             // close the meta tag
             /**#@-*/
         },
@@ -1376,7 +1535,7 @@ define([
              * Attributes for the ticks labels
              *
              * @name Ticks#label
-             * @type {Object}
+             * @type Object
              * @default {}
              *
              */
@@ -1429,9 +1588,9 @@ define([
             *             }
             *         },
             *     });
-            * 
+            *
             *     })();
-            * 
+            *
             * </script><pre>
             *
             * @name Ticks#beautifulScientificTickLabels
@@ -1598,13 +1757,27 @@ define([
 
             /**
              * If a label exceeds {@link Ticks#maxLabelLength} this determines the precision used to shorten the tick label.
+             * Replaced by the digits attribute.
              *
              * @type Number
              * @name Ticks#precision
              * @see Ticks#maxLabelLength
+             * @see Ticks#digits
+             * @deprecated
              * @default 3
              */
             precision: 3,
+
+            /**
+             * If a label exceeds {@link Ticks#maxLabelLength} this determines the number of digits used to shorten the tick label.
+             *
+             * @type Number
+             * @name Ticks#digits
+             * @see Ticks#maxLabelLength
+             * @deprecated
+             * @default 3
+             */
+            digits: 3,
 
             /**
              * The default distance between two ticks. Please be aware that this value does not have
@@ -1621,7 +1794,7 @@ define([
              * Tick face for ticks of finite length.  By default (face: '|') this is a straight line.
              * Possible other values are '<' and '>'. These faces are used in
              * {@link JXG.Hatch} for hatch marking parallel lines.
-             * @type {String}
+             * @type String
              * @name{Ticks#face}
              * @see hatch
              * @default '|'
@@ -1650,7 +1823,7 @@ define([
 
             strokeOpacity: 1,
             strokeWidth: 1,
-            strokeColor: 'black',
+            strokeColor: '#000000',
             highlightStrokeColor: '#888888',
             fillColor: 'none',
             highlightFillColor: 'none',
@@ -1690,7 +1863,7 @@ define([
             anchor: 'middle',
             face: '|',
             strokeWidth: 2,
-            strokeColor: 'blue',
+            strokeColor: Color.palette.blue,
             ticksDistance: 0.2
         },
 
@@ -1712,12 +1885,12 @@ define([
          * }
          * </pre>
          *
-         * @type {Object}
+         * @type Object
          * @name JXG.Options#precision
          * @see JXG.GeometryElement#precision
          */
         precision: {
-            touch: 15,
+            touch: 30,
             touchMax: 100,
             mouse: 4,
             pen: 4,
@@ -1752,7 +1925,7 @@ define([
          *   trace: 0
          * }
          * </pre>
-         * @type {Object}
+         * @type Object
          * @name JXG.Options#layer
          */
         layer: {
@@ -1796,13 +1969,16 @@ define([
 
             /**
              * Radius of the sector, displaying the angle.
+             * The radius can be given as number (in user coordinates)
+             * or as string 'auto'. In the latter case, the angle
+             * is set to an value between 20 and 50 px.
              *
-             * @type Number
+             * @type {Number|String}
              * @name Angle#radius
-             * @default 0.5
+             * @default 'auto'
              * @visprop
              */
-            radius: 0.5,
+            radius: 'auto',
 
             /**
              * Display type of the angle field. Possible values are
@@ -1840,9 +2016,13 @@ define([
              */
             orthoSensitivity: 1.0,
 
-            fillColor: '#FF7F00',
-            highlightFillColor: '#FF7F00',
-            strokeColor: '#FF7F00',
+            fillColor: Color.palette.orange,
+            highlightFillColor: Color.palette.orange,
+            strokeColor: Color.palette.orange,
+            // fillColor: '#ff7f00',
+            // highlightFillColor: '#ff7f00',
+            // strokeColor: '#ff7f00',
+
             fillOpacity: 0.3,
             highlightFillOpacity: 0.3,
 
@@ -1867,7 +2047,7 @@ define([
             dot: {
                 visible: false,
                 strokeColor: 'none',
-                fillColor: 'black',
+                fillColor: '#000000',
                 size: 2,
                 face: 'o',
                 withLabel: false,
@@ -1877,7 +2057,7 @@ define([
             label: {
                 position: 'top',
                 offset: [0, 0],
-                strokeColor: '#0000FF'
+                strokeColor: Color.palette.blue
             },
 
             /**
@@ -1929,8 +2109,8 @@ define([
             lastArrow: false,
             fillColor: 'none',
             highlightFillColor: 'none',
-            strokeColor: '#0000ff',
-            highlightStrokeColor: '#C3D9FF',
+            strokeColor: Color.palette.blue,
+            highlightStrokeColor: '#c3d9ff',
             useDirection: false,
 
             /**
@@ -2070,6 +2250,8 @@ define([
                 visible: false
             },
 
+            tabindex: -1,
+
             /**
              * Attributes for the axis label.
              *
@@ -2120,7 +2302,7 @@ define([
              * @name Bisectorlines#line1
              */
             line1: {               //
-                strokeColor: 'black'
+                strokeColor: '#000000'
             },
 
             /**
@@ -2130,8 +2312,44 @@ define([
              * @name Bisectorlines#line2
              */
             line2: {               //
-                strokeColor: 'black'
+                strokeColor: '#000000'
             }
+
+            /**#@-*/
+        },
+
+        /* special options for boxplot curves */
+        boxplot: {
+            /**#@+
+             * @visprop
+             */
+
+            /**
+             *  Direction of the box plot: 'vertical' or 'horizontal'
+             *
+             * @type String
+             * @name Boxplot#dir
+             * @default: 'vertical'
+             */
+            dir: 'vertical',
+
+            /**
+             * Relative width of the maximum and minimum quantile
+             *
+             * @type Number
+             * @name Boxplot#smallWidth
+             * @default: 0.5
+             */
+            smallWidth: 0.5,
+
+            strokeWidth: 2,
+            strokeColor: Color.palette.blue,
+            fillColor: Color.palette.blue,
+            fillOpacity: 0.2,
+            highlightStrokeWidth: 2,
+            highlightStrokeColor: Color.palette.blue,
+            highlightFillColor: Color.palette.blue,
+            highlightFillOpacity: 0.1
 
             /**#@-*/
         },
@@ -2187,7 +2405,7 @@ define([
              *
              * @name isArrayOfCoordinates
              * @memberOf Cardinalspline.prototype
-             * @type {Boolean}
+             * @type Boolean
              * @default false
              */
             isArrayOfCoordinates: false,
@@ -2222,7 +2440,7 @@ define([
              */
 
             chartStyle: 'line',
-            colors: ['#B02B2C', '#3F4C6B', '#C79810', '#D15600', '#FFFF88', '#C3D9FF', '#4096EE', '#008C00'],
+            colors: ['#B02B2C', '#3F4C6B', '#C79810', '#D15600', '#FFFF88', '#c3d9ff', '#4096EE', '#008C00'],
             highlightcolors: null,
             fillcolor: null,
             highlightonsector: false,
@@ -2287,8 +2505,8 @@ define([
 
             fillColor: 'none',
             highlightFillColor: 'none',
-            strokeColor: '#0000ff',
-            highlightStrokeColor: '#C3D9FF',
+            strokeColor: Color.palette.blue,
+            highlightStrokeColor: '#c3d9ff',
 
             /**
              * Attributes for center point.
@@ -2297,6 +2515,25 @@ define([
              * @name Circle#center
              */
             center: {
+                visible: false,
+                withLabel: false,
+                fixed: false,
+
+                fillColor: Color.palette.red,
+                strokeColor: Color.palette.red,
+                highlightFillColor: '#c3d9ff',
+                highlightStrokeColor: '#c3d9ff',
+
+                name: ''
+            },
+
+            /**
+             * Attributes for center point.
+             *
+             * @type Point
+             * @name Circle#center
+             */
+            point2: {
                 visible: false,
                 withLabel: false,
                 fixed: false,
@@ -2323,8 +2560,8 @@ define([
 
             fillColor: 'none',
             highlightFillColor: 'none',
-            strokeColor: '#0000ff',
-            highlightStrokeColor: '#C3D9FF',
+            strokeColor: Color.palette.blue,
+            highlightStrokeColor: '#c3d9ff',
 
             /**
              * Attributes for center point.
@@ -2336,6 +2573,10 @@ define([
                 visible: false,
                 fixed: false,
                 withLabel: false,
+                fillColor: Color.palette.red,
+                strokeColor: Color.palette.red,
+                highlightFillColor: '#c3d9ff',
+                highlightStrokeColor: '#c3d9ff',
                 name: ''
             }
             /**#@-*/
@@ -2348,8 +2589,8 @@ define([
 
             fillColor: 'none',
             highlightFillColor: 'none',
-            strokeColor: '#0000ff',
-            highlightStrokeColor: '#C3D9FF',
+            strokeColor: Color.palette.blue,
+            highlightStrokeColor: '#c3d9ff',
 
             /**
              * Attributes for center point.
@@ -2373,12 +2614,12 @@ define([
              */
 
             useDirection: true,
-            fillColor: '#00FF00',
-            highlightFillColor: '#00FF00',
+            fillColor: Color.palette.yellow,
+            highlightFillColor: Color.palette.yellow,
             fillOpacity: 0.3,
             highlightFillOpacity: 0.3,
-            strokeColor: '#0000ff',
-            highlightStrokeColor: '#C3D9FF',
+            strokeColor: Color.palette.blue,
+            highlightStrokeColor: '#c3d9ff',
 
             /**
              * Attributes for center point.
@@ -2403,8 +2644,8 @@ define([
 
             fillColor: 'none',
             highlightFillColor: 'none',
-            strokeColor: '#0000ff',
-            highlightStrokeColor: '#C3D9FF',
+            strokeColor: Color.palette.blue,
+            highlightStrokeColor: '#c3d9ff',
 
             /**
              * Attributes for foci points.
@@ -2460,7 +2701,7 @@ define([
         /* special curve options */
         curve: {
             strokeWidth: 1,
-            strokeColor: '#0000ff',
+            strokeColor: Color.palette.blue,
             fillColor: 'none',
             fixed: true,
 
@@ -2604,22 +2845,39 @@ define([
             },
 
             /**
-             * Curve has an arrow head at the start position.
+             * Configure arrow head at the start position for curve.
+             * Recommended arrow head type is 7.
              *
-             * @name Line#firstArrow for options
+             * @name Curve#firstArrow
              * @type Boolean / Object
              * @default false
+             * @see Line#firstArrow for options
              */
             firstArrow: false,
 
             /**
-             * Curve has an arrow head at the end position.
+             * Configure arrow head at the end position for curve.
+             * Recommended arrow head type is 7.
              *
+             * @name Curve#lastArrow
              * @see Line#lastArrow for options
              * @type Boolean / Object
              * @default false
              */
             lastArrow: false
+
+            /**#@-*/
+        },
+
+        /* special foreignObject options */
+        foreignobject: {
+
+            /**#@+
+             * @visprop
+             */
+            attractors: [],
+            fixed: true,
+            visible: true
 
             /**#@-*/
         },
@@ -2644,8 +2902,8 @@ define([
             hasGrid: false,
             gridX: 1,
             gridY: 1,
-            //strokeColor: '#C0C0C0',
-            strokeColor: '#C0C0C0',
+            //strokeColor: '#c0c0c0',
+            strokeColor: '#c0c0c0',
             strokeOpacity: 0.5,
             strokeWidth: 1,
             dash: 0,    // dashed grids slow down the iPad considerably
@@ -2688,7 +2946,7 @@ define([
 
             frozen: true,
             isLabel: false,
-            strokeColor: 'black',
+            strokeColor: '#000000',
             display: 'html',
             anchorX: 'left',
             anchorY: 'middle',
@@ -2747,7 +3005,8 @@ define([
 
             /**
              * Defines together with {@link Image#snapSizeY} the grid the image snaps on to.
-             * The image will only snap on integer multiples to snapSizeX in x and snapSizeY in y direction.
+             * The image will only snap on user coordinates which are
+             * integer multiples to snapSizeX in x and snapSizeY in y direction.
              * If this value is equal to or less than <tt>0</tt>, it will use the grid displayed by the major ticks
              * of the default ticks of the default x axes of the board.
              *
@@ -2799,8 +3058,8 @@ define([
 
             fillColor: 'none',
             highlightFillColor: 'none',
-            strokeColor: '#0000ff',
-            highlightStrokeColor: '#C3D9FF',
+            strokeColor: Color.palette.blue,
+            highlightStrokeColor: '#c3d9ff',
 
             /**
              * Attributes of circle center.
@@ -2812,6 +3071,10 @@ define([
                 visible: false,
                 fixed: false,
                 withLabel: false,
+                fillColor: Color.palette.red,
+                strokeColor: Color.palette.red,
+                highlightFillColor: '#c3d9ff',
+                highlightStrokeColor: '#c3d9ff',
                 name: ''
             }
             /**#@-*/
@@ -2822,7 +3085,7 @@ define([
              * @visprop
              */
 
-            fillColor: 'red',
+            fillColor: Color.palette.red,
             fillOpacity: 0.2,
             strokeColor: 'none',
 
@@ -2874,9 +3137,9 @@ define([
             fixed: true,
             strokeWidth: 0,
             strokeOpacity: 0,
-            fillColor: 'red',
-            fillOpacity: 0.4,
-            highlightFillColor: 'red',
+            fillColor: Color.palette.red,
+            fillOpacity: 0.3,
+            highlightFillColor: Color.palette.red,
             highlightFillOpacity: 0.2,
 
             /**
@@ -2889,7 +3152,7 @@ define([
             curveLeft: {    // Start point
                 visible: true,
                 withLabel: false,
-                color: 'red',
+                color: Color.palette.red,
                 fillOpacity: 0.8,
                 layer: 9
             },
@@ -2918,7 +3181,7 @@ define([
             curveRight: {      // End point
                 visible: true,
                 withLabel: false,
-                color: 'red',
+                color: Color.palette.red,
                 fillOpacity: 0.8,
                 layer: 9
             },
@@ -3010,10 +3273,10 @@ define([
              */
 
             visible: 'inherit',
-            strokeColor: 'black',
+            strokeColor: '#000000',
             strokeOpacity: 1,
             highlightStrokeOpacity: 0.666666,
-            highlightStrokeColor: 'black',
+            highlightStrokeColor: '#000000',
 
             fixed: true,
 
@@ -3061,7 +3324,7 @@ define([
              *
              * @name Label#autoPosition
              * @see Label#offset
-             * @type {Boolean}
+             * @type Boolean
              * @default false
              *
              * @example
@@ -3123,9 +3386,9 @@ define([
              * (Circular) array of label colors.
              * @name: Legend#colors
              * @type Array
-             * @default "['#B02B2C', '#3F4C6B', '#C79810', '#D15600', '#FFFF88', '#C3D9FF', '#4096EE', '#008C00']"
+             * @default "['#B02B2C', '#3F4C6B', '#C79810', '#D15600', '#FFFF88', '#c3d9ff', '#4096EE', '#008C00']"
              */
-            colors: ['#B02B2C', '#3F4C6B', '#C79810', '#D15600', '#FFFF88', '#C3D9FF', '#4096EE', '#008C00'],
+            colors: ['#B02B2C', '#3F4C6B', '#C79810', '#D15600', '#FFFF88', '#c3d9ff', '#4096EE', '#008C00'],
 
             /**
              * Height (in px) of one legend entry
@@ -3148,18 +3411,20 @@ define([
              */
 
             /**
-             * Line has an arrow head at the position of its first point or the corresponding
+             * Configure the arrow head at the position of its first point or the corresponding
              * intersection with the canvas border
              *
              * In case firstArrow is an object it has the sub-attributes:
              * <pre>
              * {
-             *      type: 1, // possible values are 1, 2, ..., 6. Default value is 1.
+             *      type: 1, // possible values are 1, 2, ..., 7. Default value is 1.
              *      size: 6, // size of the arrow head. Default value is 6.
              *               // This value is multiplied with the strokeWidth of the line
+             *               // Exception: for type=7 size is ignored
              *      highlightSize: 6, // size of the arrow head in case the element is highlighted. Default value
              * }
              * </pre>
+             * type=7 is the default for curves if firstArrow: true
              *
              * @name Line#firstArrow
              * @see Line#lastArrow
@@ -3170,18 +3435,20 @@ define([
             firstArrow: false,
 
             /**
-             * Line has an arrow head at the position of its second point or the corresponding
+             * Configute the arrow head at the position of its second point or the corresponding
              * intersection with the canvas border.
              *
-             * In case firstArrow is an object it has the sub-attributes:
+             * In case lastArrow is an object it has the sub-attributes:
              * <pre>
              * {
-             *      type: 1, // possible values are 1, 2, ..., 6. Default value is 1.
+             *      type: 1, // possible values are 1, 2, ..., 7. Default value is 1.
              *      size: 6, // size of the arrow head. Default value is 6.
              *               // This value is multiplied with the strokeWidth of the line.
+             *               // Exception: for type=7 size is ignored
              *      highlightSize: 6, // size of the arrow head in case the element is highlighted. Default value is 6.
              * }
              * </pre>
+             * type=7 is the default for curves if lastArrow: true
              *
              * @example
              *     var p1 = board.create('point', [-5, 2], {size:1});
@@ -3261,8 +3528,8 @@ define([
 
             fillColor: 'none',               // Important for VML on IE
             highlightFillColor: 'none',  // Important for VML on IE
-            strokeColor: '#0000ff',
-            highlightStrokeColor: '#888888',
+            strokeColor: Color.palette.blue,
+            highlightStrokeColor: '#c3d9ff',
             withTicks: false,
 
             /**
@@ -3397,7 +3664,7 @@ define([
              * Not available for VML renderer.
              * [lineCap description]
              * @name Line#lineCap
-             * @type {String}
+             * @type String
              * @default 'butt'
              */
             lineCap: 'butt'
@@ -3449,7 +3716,7 @@ define([
              *
              * @name isArrayOfCoordinates
              * @memberOf Metapostspline.prototype
-             * @type {Boolean}
+             * @type Boolean
              * @default false
              */
             isArrayOfCoordinates: false,
@@ -3690,11 +3957,22 @@ define([
              */
             sizeUnit: 'screen',
 
-            fillColor: '#ff0000',
-            highlightFillColor: '#EEEEEE',
             strokeWidth: 2,
-            strokeColor: '#ff0000',
-            highlightStrokeColor: '#C3D9FF',
+
+            fillColor: Color.palette.red,
+            strokeColor: Color.palette.red,
+            highlightFillColor:'#c3d9ff',
+            highlightStrokeColor: '#c3d9ff',
+            // strokeOpacity: 1.0,
+            // fillOpacity: 1.0,
+            // highlightFillOpacity: 0.5,
+            // highlightStrokeOpacity: 0.5,
+
+            // fillColor: '#ff0000',
+            // highlightFillColor: '#eeeeee',
+            // strokeWidth: 2,
+            // strokeColor: '#ff0000',
+            // highlightStrokeColor: '#c3d9ff',
 
             /**
              * If true, the point size changes on zoom events.
@@ -3790,8 +4068,12 @@ define([
             snatchDistance: 0.0,
 
             /**
-             * If set to true, the point will snap to a grid defined by
-             * {@link Point#snapSizeX} and {@link Point#snapSizeY}.
+             * If set to true, the point will snap to a grid of integer multiples of
+             * {@link Point#snapSizeX} and {@link Point#snapSizeY} (in user coordinates).
+             * <p>
+             * The coordinates of the grid points are either integer multiples of snapSizeX and snapSizeY
+             * (given in user coordinates, not pixels) or are the intersection points
+             * of the major ticks of the boards default axes in case that snapSizeX, snapSizeY are negative.
              *
              * @name Point#snapToGrid
              *
@@ -3803,7 +4085,43 @@ define([
             snapToGrid: false,
 
             /**
+             * If set to true, the point will only snap to (possibly invisibly) grid points
+             * when within {@link Point#attractorDistance} of such a grid point.
+             * <p>
+             * The coordinates of the grid points are either integer multiples of snapSizeX and snapSizeY
+             * (given in user coordinates, not pixels) or are the intersection points
+             * of the major ticks of the boards default axes in case that snapSizeX, snapSizeY are negative.
+             *
+             * @name Point#attractToGrid
+             *
+             * @see Point#attractorDistance
+             * @see Point#attractorUnit
+             * @see Point#snapToGrid
+             * @see Point#snapSizeX
+             * @see Point#snapSizeY
+             * @type Boolean
+             * @default false
+             *
+             * @example
+             * board.create('point', [3, 3], { attractToGrid: true, attractorDistance: 10, attractorunit: 'screen' });
+             *
+             * </pre><div id="JXG397ab787-cd40-449c-a7e7-a3f7bab1d4f6" class="jxgbox" style="width: 300px; height: 300px;"></div>
+             * <script type="text/javascript">
+             *     (function() {
+             *         var board = JXG.JSXGraph.initBoard('JXG397ab787-cd40-449c-a7e7-a3f7bab1d4f6',
+             *             {boundingbox: [-1, 4, 7,-4], axis: true, showcopyright: false, shownavigation: false});
+             *     board.create('point', [3, 3], { attractToGrid: true, attractorDistance: 10, attractorunit: 'screen' });
+             *
+             *     })();
+             *
+             * </script><pre>
+             *
+             */
+            attractToGrid: false,
+
+            /**
              * Defines together with {@link Point#snapSizeY} the grid the point snaps on to.
+             * It is given in user coordinates, not in pixels.
              * The point will only snap on integer multiples to snapSizeX in x and snapSizeY in y direction.
              * If this value is equal to or less than <tt>0</tt>, it will use the grid displayed by the major ticks
              * of the default ticks of the default x axes of the board.
@@ -3820,6 +4138,7 @@ define([
 
             /**
              * Defines together with {@link Point#snapSizeX} the grid the point snaps on to.
+             * It is given in user coordinates, not in pixels.
              * The point will only snap on integer multiples to snapSizeX in x and snapSizeY in y direction.
              * If this value is equal to or less than <tt>0</tt>, it will use the grid displayed by the major ticks
              * of the default ticks of the default y axes of the board.
@@ -3874,10 +4193,12 @@ define([
              */
             hasInnerPoints: false,
 
-            fillColor: '#00FF00',
-            highlightFillColor: '#00FF00',
+            fillColor: Color.palette.yellow,
+            highlightFillColor: Color.palette.yellow,
+            // fillColor: '#00ff00',
+            // highlightFillColor: '#00ff00',
             fillOpacity: 0.3,
-            highlightFillOpacity: 0.3,
+            highlightFillOpacity: 0.2,
 
             /**
              * Is the polygon bordered by lines?
@@ -3916,8 +4237,8 @@ define([
                 layer: 9,
                 withLabel: false,
                 name: '',
-                strokeColor: '#ff0000',
-                fillColor: '#ff0000',
+                strokeColor: Color.palette.red,
+                fillColor: Color.palette.red,
                 fixed: false,
                 visible: 'inherit'
             },
@@ -4018,10 +4339,10 @@ define([
              * @default false
              */
             hasInnerPoints: false,
-            fillColor: '#00FF00',
-            highlightFillColor: '#00FF00',
+            fillColor: Color.palette.yellow,
+            highlightFillColor: Color.palette.yellow,
             fillOpacity: 0.3,
-            highlightFillOpacity: 0.3,
+            highlightFillOpacity: 0.2,
 
             /**
              * Is the polygon bordered by lines?
@@ -4058,8 +4379,8 @@ define([
             vertices: {
                 layer: 9,
                 withLabel: true,
-                strokeColor: '#ff0000',
-                fillColor: '#ff0000',
+                strokeColor: Color.palette.red,
+                fillColor: Color.palette.red,
                 fixed: false
             },
 
@@ -4084,7 +4405,7 @@ define([
 
             withLabel: false,
             fillOpacity: 0.3,
-            fillColor: '#ffff00'
+            fillColor: Color.palette.yellow
 
             /**#@-*/
         },
@@ -4095,8 +4416,11 @@ define([
              * @visprop
              */
 
-            fillColor: '#00FF00',
-            highlightFillColor: '#00FF00',
+            fillColor: Color.palette.yellow,
+            highlightFillColor: Color.palette.yellow,
+            // fillColor: '#00ff00',
+            // highlightFillColor: '#00ff00',
+
             fillOpacity: 0.3,
             highlightFillOpacity: 0.3,
             highlightOnSector: false,
@@ -4198,6 +4522,10 @@ define([
                 visible: false,
                 withLabel: false,
                 fixed: false,
+                fillColor: Color.palette.red,
+                strokeColor: Color.palette.red,
+                highlightFillColor:'#eeeeee',
+                highlightStrokeColor: Color.palette.red,
                 name: ''
             }
 
@@ -4222,12 +4550,26 @@ define([
 
             /**
              * The precision of the slider value displayed in the optional text.
+             * Replaced by the attribute "digits".
+             *
              * @memberOf Slider.prototype
              * @name precision
              * @type Number
+             * @deprecated
+             * @see Slider#digits
              * @default 2
              */
             precision: 2,
+
+            /**
+             * The number of digits of the slider value displayed in the optional text.
+             *
+             * @memberOf Slider.prototype
+             * @name digits
+             * @type Number
+             * @default 2
+             */
+            digits: 2,
 
             firstArrow: false,
             lastArrow: false,
@@ -4253,7 +4595,7 @@ define([
             /**
              * If not null, this replaces the part "name = " in the slider label.
              * Possible types: string, number or function.
-             * @type {String}
+             * @type String
              * @name suffixLabel
              * @memberOf Slider.prototype
              * @default null
@@ -4265,7 +4607,7 @@ define([
             /**
              * If not null, this is appended to the value in the slider label.
              * Possible types: string, number or function.
-             * @type {String}
+             * @type String
              * @name unitLabel
              * @memberOf Slider.prototype
              * @default null
@@ -4277,7 +4619,7 @@ define([
             /**
              * If not null, this is appended to the value and to unitLabel in the slider label.
              * Possible types: string, number or function.
-             * @type {String}
+             * @type String
              * @name postLabel
              * @memberOf Slider.prototype
              * @default null
@@ -4364,7 +4706,7 @@ define([
 
                 // Label drawing
                 drawLabels: false,
-                precision: 2,
+                digits: 2,
                 includeBoundaries: 1,
                 drawZero: true,
                 label: {
@@ -4510,9 +4852,9 @@ define([
              * @visprop
              */
 
-            fillColor: 'red',
+            fillColor: Color.palette.red,
             fillOpacity: 0.4,
-            highlightFillColor: 'red',
+            highlightFillColor: Color.palette.red,
             highlightFillOpacity: 0.3,
 
             borders: {
@@ -4576,9 +4918,9 @@ define([
              * Attributes for the top point.
              *
              * @type Point
-             * @name Slopetriangle#topPoint
+             * @name Slopetriangle#toppoint
              */
-            topPoint: {
+            toppoint: {
                 visible: false,
                 withLabel: false,
                 name: ''
@@ -4635,12 +4977,25 @@ define([
 
             /**
              * The precision of the tape measure value displayed in the optional text.
+             * Replaced by the attribute digits
+             *
+             * @memberOf Tapemeasure.prototype
+             * @name precision
+             * @type Number
+             * @deprecated
+             * @see Tapemeasure#digits
+             * @default 2
+             */
+            precision: 2,
+
+            /**
+             * The precision of the tape measure value displayed in the optional text.
              * @memberOf Tapemeasure.prototype
              * @name precision
              * @type Number
              * @default 2
              */
-            precision: 2,
+            digits: 2,
 
             /**
              * Attributes for first helper point defining the tape measure position.
@@ -4730,8 +5085,36 @@ define([
              * @memberOf Text.prototype
              * @default 12
              * @type Number
+             * @see Text#fontUnit
              */
             fontSize: 12,
+
+            /**
+             * CSS unit for the font size of a text element. Usually, this will be the default value 'px' but
+             * for responsive application, also 'vw', 'vh', vmax', 'vmin' or 'rem' might be useful.
+             *
+             * @name fontUnit
+             * @memberOf Text.prototype
+             * @default 'px'
+             * @type String
+             * @see Text#fontSize
+             *
+             * @example
+             * var txt = board.create('text', [2, 2, "hello"], {fontSize: 8, fontUnit: 'vmin'});
+             *
+             * </pre><div id="JXG2da7e972-ac62-416b-a94b-32559c9ec9f9" class="jxgbox" style="width: 300px; height: 300px;"></div>
+             * <script type="text/javascript">
+             *     (function() {
+             *         var board = JXG.JSXGraph.initBoard('JXG2da7e972-ac62-416b-a94b-32559c9ec9f9',
+             *             {boundingbox: [-8, 8, 8,-8], axis: true, showcopyright: false, shownavigation: false});
+             *     var txt = board.create('text', [2, 2, "hello"], {fontSize: 8, fontUnit: 'vmin'});
+             *
+             *     })();
+             *
+             * </script><pre>
+             *
+             */
+            fontUnit: 'px',
 
             /**
              * Used to round texts given by a number.
@@ -4777,8 +5160,8 @@ define([
              */
             isLabel: false,
 
-            strokeColor: 'black',
-            highlightStrokeColor: 'black',
+            strokeColor: '#000000',
+            highlightStrokeColor: '#000000',
             highlightStrokeOpacity: 0.666666,
 
             /**
@@ -5011,7 +5394,7 @@ define([
              *
              * @example
              * // Load MathJax:
-             * // <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+             * // &lt;script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"&lt;&lt;/script&gt;
              *
              * // function and its derivative
              * var f1 = function(x) { return x * x * x; },
@@ -5118,9 +5501,99 @@ define([
              *
              * </script><pre>
              *
+             * @example
+             * var board = JXG.JSXGraph.initBoard('jxgbox', {boundingbox: [-1, 10, 11, -2], axis: true});
+             * board.options.text.useMathjax = true;
+             *
+             * a = board.create('slider',[[-0.7,1.5],[5,1.5],[0,0.5,1]], {
+             *     suffixlabel:'\\(t_1=\\)',
+             *     unitLabel: ' \\(\\text{ ms}\\)',
+             *     snapWidth:0.01}),
+             *
+             * func = board.create('functiongraph',[function(x){return (a.Value()*x*x)}], {strokeColor: "red"});
+             * text1 = board.create('text', [5, 1, function(){
+             *             return '\\(a(t)= { 1 \\over ' + a.Value().toFixed(3) + '}\\)';
+             *         }], {fontSize: 15, fixed:true, strokeColor:'red', anchorY: 'top', parse: false});
+             *
+             * </pre><div id="JXGf8bd01db-fb6a-4a5c-9e7f-8823f7aa5ac6" class="jxgbox" style="width: 300px; height: 300px;"></div>
+             * <script type="text/javascript">
+             *     (function() {
+             *         var board = JXG.JSXGraph.initBoard('JXGf8bd01db-fb6a-4a5c-9e7f-8823f7aa5ac6',
+             *             {boundingbox: [-1, 10, 11, -2], axis: true, showcopyright: false, shownavigation: false});
+             *     board.options.text.useMathjax = true;
+             *
+             *     a = board.create('slider',[[-0.7,1.5],[5,1.5],[0,0.5,1]], {
+             *         suffixlabel:'\\(t_1=\\)',
+             *         unitLabel: ' \\(\\text{ ms}\\)',
+             *         snapWidth:0.01}),
+             *
+             *     func = board.create('functiongraph',[function(x){return (a.Value()*x*x)}], {strokeColor: "red"});
+             *     text1 = board.create('text', [5, 1, function(){
+             *                 return '\\(a(t)= { 1 \\over ' + a.Value().toFixed(3) + '}\\)';
+             *             }], {fontSize: 15, fixed:true, strokeColor:'red', anchorY: 'top', parse: false});
+             *
+             *     })();
+             *
+             * </script><pre>
+             *
              */
             useMathJax: false,
 
+            /**
+             *
+             * If true, KaTeX will be used to render the input string.
+             * For this feature, katex.min.js and katex.min.css have to be included.
+             * <p>
+             * The example below does not work, because there is a conflict with
+             * the MathJax library which is used below.
+             * </p>
+             *
+             * @name useKatex
+             * @memberOf Text.prototype
+             * @default false
+             * @type Boolean
+             *
+             *
+             * @example
+             * JXG.Options.text.useKatex = true;
+             *
+             * const board = JXG.JSXGraph.initBoard('jxgbox', {
+             *     boundingbox: [-2, 5, 8, -5], axis:true
+             * });
+             *
+             * var a = board.create('slider',[[-0.7,1.5],[5,1.5],[0,0.5,1]], {
+             *     suffixlabel:'t_1=',
+             *     unitLabel: ' \\text{ ms}',
+             *     snapWidth:0.01});
+             *
+             * func = board.create('functiongraph',[function(x){return (a.Value()*x*x)}], {strokeColor: "red"});
+             * text1 = board.create('text', [5, 1, function(){
+             *             return 'a(t)= { 1 \\over ' + a.Value().toFixed(3) + '}';
+             *         }], {fontSize: 15, fixed:true, strokeColor:'red', anchorY: 'top'});
+             *
+             * </pre>
+             * <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.10/dist/katex.min.css" integrity="sha384-0cCFrwW/0bAk1Z/6IMgIyNU3kfTcNirlObr4WjrUU7+hZeD6ravdYJ3kPWSeC31M" crossorigin="anonymous">
+             * <script src="https://cdn.jsdelivr.net/npm/katex@0.13.10/dist/katex.min.js" integrity="sha384-dtFDxK2tSkECx/6302Z4VN2ZRqt6Gis+b1IwCjJPrn0kMYFQT9rbtyQWg5NFWAF7" crossorigin="anonymous"></script>
+             * <div id="JXG497f065c-cfc1-44c3-ba21-5fa581668869" class="jxgbox" style="width: 300px; height: 300px;"></div>
+             * <script type="text/javascript">
+             *     (function() {
+             *         var board = JXG.JSXGraph.initBoard('JXG497f065c-cfc1-44c3-ba21-5fa581668869',
+             *             {boundingbox: [-2, 5, 8, -5], axis: true, showcopyright: false, shownavigation: false});
+             *     board.options.useKatex = true;
+             *     var a = board.create('slider',[[-0.7,1.5],[5,1.5],[0,0.5,1]], {
+             *         suffixlabel:'t_1=',
+             *         unitLabel: ' \\text{ ms}',
+             *         snapWidth:0.01});
+             *
+             *     func = board.create('functiongraph',[function(x){return (a.Value()*x*x)}], {strokeColor: "red"});
+             *     text1 = board.create('text', [5, 1, function(){
+             *                 return 'a(t)= { 1 \\over ' + a.Value().toFixed(3) + '}';
+             *             }], {fontSize: 15, fixed:true, strokeColor:'red', anchorY: 'top'});
+             *
+             *     })();
+             *
+             * </script><pre>
+             */
             useKatex: false,
 
             /**
@@ -5298,7 +5771,7 @@ define([
             arrow: {
                 strokeWidth: 2,
                 withLabel: false,
-                strokeColor: '#ff0000',
+                strokeColor: Color.palette.red,
                 lastArrow: true
             }
             /**#@-*/
@@ -5310,7 +5783,7 @@ define([
          * It is used in {@link JXG.GeometryElement#setAttribute} and in
          * the constructor {@link JXG.GeometryElement}.
          * Attention: In Options.js abbreviations are not allowed.
-         * @type {Object}
+         * @type Object
          * @name JXG.Options#shortcuts
          *
          */

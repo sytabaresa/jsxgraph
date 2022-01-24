@@ -65,10 +65,10 @@
 define([
     'jxg', 'base/constants', 'base/coords', 'options', 'math/numerics', 'math/math', 'math/geometry', 'math/complex',
     'math/statistics',
-    'parser/jessiecode', 'parser/geonext', 'utils/color', 'utils/type', 'utils/event', 'utils/env', 'base/transformation',
-    'base/point', 'base/line', 'base/text', 'element/composition', 'base/composition'
-], function (JXG, Const, Coords, Options, Numerics, Mat, Geometry, Complex, Statistics, JessieCode, GeonextParser, Color, Type,
-                EventEmitter, Env, Transform, Point, Line, Text, Composition, EComposition) {
+    'parser/jessiecode', 'utils/color', 'utils/type', 'utils/event', 'utils/env',
+    'base/composition'
+], function (JXG, Const, Coords, Options, Numerics, Mat, Geometry, Complex, Statistics, JessieCode, Color, Type,
+                EventEmitter, Env, Composition) {
 
     'use strict';
 
@@ -120,6 +120,14 @@ define([
         this.BOARD_MODE_MOVE_ORIGIN = 0x0002;
 
         /**
+         * Update is made with high quality, e.g. graphs are evaluated at much more points.
+         * @type Number
+         * @constant
+         * @see JXG.Board#updateQuality
+         */
+        this.BOARD_MODE_ZOOM = 0x0011;
+
+        /**
          * Update is made with low quality, e.g. graphs are evaluated at a lesser amount of points.
          * @type Number
          * @constant
@@ -134,14 +142,6 @@ define([
          * @see JXG.Board#updateQuality
          */
         this.BOARD_QUALITY_HIGH = 0x2;
-
-        /**
-         * Update is made with high quality, e.g. graphs are evaluated at much more points.
-         * @type Number
-         * @constant
-         * @see JXG.Board#updateQuality
-         */
-        this.BOARD_MODE_ZOOM = 0x0011;
 
         /**
          * Pointer to the document element containing the board.
@@ -174,11 +174,16 @@ define([
         /**
          * A reference to this boards renderer.
          * @type JXG.AbstractRenderer
+         * @name JXG.Board#renderer
+         * @private
+         * @ignore
          */
         this.renderer = renderer;
 
         /**
          * Grids keeps track of all grids attached to this board.
+         * @type Array
+         * @private
          */
         this.grids = [];
 
@@ -204,6 +209,7 @@ define([
          * usrCoords and scrCoords. usrCoords always equals [1, 0, 0] and scrCoords
          * stores the boards origin in homogeneous screen coordinates.
          * @type Object
+         * @private
          */
         this.origin = {};
         this.origin.usrCoords = [1, 0, 0];
@@ -212,44 +218,56 @@ define([
         /**
          * Zoom factor in X direction. It only stores the zoom factor to be able
          * to get back to 100% in zoom100().
+         * @name JXG.Board.zoomX
          * @type Number
+         * @private
+         * @ignore
          */
         this.zoomX = zoomX;
 
         /**
          * Zoom factor in Y direction. It only stores the zoom factor to be able
          * to get back to 100% in zoom100().
+         * @name JXG.Board.zoomY
          * @type Number
+         * @private
+         * @ignore
          */
         this.zoomY = zoomY;
 
         /**
          * The number of pixels which represent one unit in user-coordinates in x direction.
          * @type Number
+         * @private
          */
         this.unitX = unitX * this.zoomX;
 
         /**
          * The number of pixels which represent one unit in user-coordinates in y direction.
          * @type Number
+         * @private
          */
         this.unitY = unitY * this.zoomY;
 
         /**
          * Keep aspect ratio if bounding box is set and the width/height ratio differs from the
          * width/height ratio of the canvas.
+         * @type Boolean
+         * @private
          */
         this.keepaspectratio = false;
 
         /**
          * Canvas width.
          * @type Number
+         * @private
          */
         this.canvasWidth = canvasWidth;
 
         /**
          * Canvas Height
          * @type Number
+         * @private
          */
         this.canvasHeight = canvasHeight;
 
@@ -379,15 +397,15 @@ define([
 
         /**
          * References to the object that is dragged with the mouse on the board.
-         * @type {@link JXG.GeometryElement}.
-         * @see {JXG.Board#touches}
+         * @type JXG.GeometryElement
+         * @see JXG.Board#touches
          */
         this.mouse = {};
 
         /**
          * Keeps track on touched elements, like {@link JXG.Board#mouse} does for mouse events.
          * @type Array
-         * @see {JXG.Board#mouse}
+         * @see JXG.Board#mouse
          */
         this.touches = [];
 
@@ -411,6 +429,13 @@ define([
          * @type Number
          */
         this.touchMoveLast = 0;
+
+        /**
+         * Contains the pointerId of the last touchMove event which was not thrown away or since
+         * touchStart because Android's Webkit browser fires too much of them.
+         * @type Number
+         */
+         this.touchMoveLastId = Infinity;
 
         /**
          * Contains the last time (epoch, msec) since the last getCoordsTopLeftCorner call which was not thrown away.
@@ -482,7 +507,7 @@ define([
 
         /**
          * A flag which stores if the board registered pointer events.
-         * @type {Boolean}
+         * @type Boolean
          * @default false
          */
         this.hasPointerHandlers = false;
@@ -503,14 +528,14 @@ define([
 
         /**
          * A flag which tells us if the board has a pointerUp event registered at the moment.
-         * @type {Boolean}
+         * @type Boolean
          * @default false
          */
         this.hasPointerUp = false;
 
         /**
          * Offset for large coords elements like images
-         * @type {Array}
+         * @type Array
          * @private
          * @default [0, 0]
          */
@@ -518,31 +543,54 @@ define([
 
         /**
          * Stores the input device used in the last down or move event.
-         * @type {String}
+         * @type String
          * @private
          * @default 'mouse'
          */
         this._inputDevice = 'mouse';
 
+        /**
+         * Keeps a list of pointer devices which are currently touching the screen.
+         * @type Array
+         * @private
+         */
         this._board_touches = [];
 
         /**
          * A flag which tells us if the board is in the selecting mode
-         * @type {Boolean}
+         * @type Boolean
          * @default false
          */
         this.selectingMode = false;
 
         /**
          * A flag which tells us if the user is selecting
-         * @type {Boolean}
+         * @type Boolean
          * @default false
          */
         this.isSelecting = false;
 
         /**
+         * A flag which tells us if the user is scrolling the viewport
+         * @type Boolean
+         * @private
+         * @default false
+         * @see JXG.Board#scrollListener
+         */
+        this._isScrolling = false;
+
+        /**
+         * A flag which tells us if a resize is in process
+         * @type Boolean
+         * @private
+         * @default false
+         * @see JXG.Board#resizeListener
+         */
+        this._isResizing = false;
+
+        /**
          * A bounding box for the selection
-         * @type {Array}
+         * @type Array
          * @default [ [0,0], [0,0] ]
          */
         this.selectingBox = [[0, 0], [0, 0]];
@@ -746,17 +794,20 @@ define([
          * @see JXG.Board#mouseMoveListener
          */
         checkFrameRate: function(evt) {
-            var time = new Date().getTime();
+            var handleEvt = false,
+                time = new Date().getTime();
 
-            if ((time - this.touchMoveLast) * this.attr.maxframerate < 1000) {
-                // this.updateQuality = this.BOARD_QUALITY_HIGH;
-                // this.triggerEventHandlers(['touchmove', 'move'], [evt, this.mode]);
-
-                return false;
+            if (Type.exists(evt.pointerId) && this.touchMoveLastId !== evt.pointerId) {
+                handleEvt = true;
+                this.touchMoveLastId = evt.pointerId;
             }
-
-            this.touchMoveLast = time;
-            return true;
+            if (!handleEvt && (time - this.touchMoveLast) * this.attr.maxframerate >= 1000) {
+                handleEvt = true;
+            }
+            if (handleEvt) {
+                this.touchMoveLast = time;
+            }
+            return handleEvt;
         },
 
         /**
@@ -768,7 +819,7 @@ define([
                 docElement = this.document.documentElement || this.document.body.parentNode,
                 docBody = this.document.body,
                 container = this.containerObj,
-                viewport, content,
+                // viewport, content,
                 zoom, o;
 
             /**
@@ -885,7 +936,7 @@ define([
                 absPos,
                 v;
 
-            // position of mouse cursor relative to containers position of container
+            // Position of cursor using clientX/Y
             absPos = Env.getPosition(e, i, this.document);
 
             /**
@@ -894,6 +945,7 @@ define([
             if (!Type.exists(this.cssTransMat)) {
                 this.updateCSSTransforms();
             }
+            // Position relative to the top left corner
             v = [1, absPos[0] - cPos[0], absPos[1] - cPos[1]];
             v = Mat.matVecMult(this.cssTransMat, v);
             v[1] /= v[0];
@@ -1111,8 +1163,8 @@ define([
          * @param {Object} o The touch object that is dragged: {JXG.Board#touches}.
          * @param {Object} evt The event object that lead to this movement.
          */
-        twoFingerMove: function (p1, p2, o, evt) {
-            var np1c, np2c, drag;
+        twoFingerMove: function (o, id, evt) {
+            var drag;
 
             if (Type.exists(o) && Type.exists(o.obj)) {
                 drag = o.obj;
@@ -1120,60 +1172,51 @@ define([
                 return;
             }
 
-            // New finger position
-            np1c = new Coords(Const.COORDS_BY_SCREEN, this.getScrCoordsOfMouse(p1[0], p1[1]), this);
-            np2c = new Coords(Const.COORDS_BY_SCREEN, this.getScrCoordsOfMouse(p2[0], p2[1]), this);
-
             if (drag.elementClass === Const.OBJECT_CLASS_LINE ||
-                    drag.type === Const.OBJECT_TYPE_POLYGON) {
-                this.twoFingerTouchObject(np1c, np2c, o, drag, evt);
+                drag.type === Const.OBJECT_TYPE_POLYGON) {
+                this.twoFingerTouchObject(o.targets, drag, id);
             } else if (drag.elementClass === Const.OBJECT_CLASS_CIRCLE) {
-                this.twoFingerTouchCircle(np1c, np2c, o, drag);
+                this.twoFingerTouchCircle(o.targets, drag, id);
             }
 
-            drag.triggerEventHandlers(['touchdrag', 'drag'], [evt]);
-
-            o.targets[0].Xprev = np1c.scrCoords[1];
-            o.targets[0].Yprev = np1c.scrCoords[2];
-            o.targets[1].Xprev = np2c.scrCoords[1];
-            o.targets[1].Yprev = np2c.scrCoords[2];
+            if (evt) {
+                drag.triggerEventHandlers(['touchdrag', 'drag'], [evt]);
+            }
         },
 
         /**
          * Moves, rotates and scales a line or polygon with two fingers.
-         * @param {JXG.Coords} np1c x,y coordinates of first touch
-         * @param {JXG.Coords} np2c x,y coordinates of second touch
-         * @param {object} o The touch object that is dragged: {JXG.Board#touches}.
+         * @param {Array} tar Array conatining touch event objects: {JXG.Board#touches.targets}.
          * @param {object} drag The object that is dragged:
-         * @param {Object} evt The event object that lead to this movement.
+         * @param {Number} id pointerId of the event. In case of old touch event this is emulated.
          */
-        twoFingerTouchObject: function (np1c, np2c, o, drag, evt) {
-            var np1, np2, op1, op2,
-                nmid, omid, nd, od,
+        twoFingerTouchObject: function (tar, drag, id) {
+            var np, op, nd, od,
                 d, alpha,
-                S, t1, t2, t3, t4, t5,
+                S, t1, t3, t4, t5,
                 ar, i, len,
-                pi180 = 0.017453292519943295; // Math.PI / 180.0
+                fixEl, moveEl, fix;
 
-            if (Type.exists(o.targets[0]) &&
-                    Type.exists(o.targets[1]) &&
-                    !isNaN(o.targets[0].Xprev + o.targets[0].Yprev + o.targets[1].Xprev + o.targets[1].Yprev)) {
+            if (Type.exists(tar[0]) && Type.exists(tar[1]) &&
+                !isNaN(tar[0].Xprev + tar[0].Yprev + tar[1].Xprev + tar[1].Yprev)) {
 
-                // Actual fingers' position
-                np1 = np1c.usrCoords;
-                np2 = np2c.usrCoords;
+                if (id === tar[0].num) {
+                    fixEl  = tar[1];
+                    moveEl = tar[0];
+                } else {
+                    fixEl  = tar[0];
+                    moveEl = tar[1];
+                }
 
-                // Previous fingers' position
-                op1 = (new Coords(Const.COORDS_BY_SCREEN, [o.targets[0].Xprev, o.targets[0].Yprev], this)).usrCoords;
-                op2 = (new Coords(Const.COORDS_BY_SCREEN, [o.targets[1].Xprev, o.targets[1].Yprev], this)).usrCoords;
-
-                // Affine mid points of the old and new positions
-                omid = [1, (op1[1] + op2[1]) * 0.5, (op1[2] + op2[2]) * 0.5];
-                nmid = [1, (np1[1] + np2[1]) * 0.5, (np1[2] + np2[2]) * 0.5];
+                fix = (new Coords(Const.COORDS_BY_SCREEN, [fixEl.Xprev, fixEl.Yprev], this)).usrCoords;
+                // Previous finger position
+                op = (new Coords(Const.COORDS_BY_SCREEN, [moveEl.Xprev, moveEl.Yprev], this)).usrCoords;
+                // New finger position
+                np = (new Coords(Const.COORDS_BY_SCREEN, [moveEl.X, moveEl.Y], this)).usrCoords;
 
                 // Old and new directions
-                od = Mat.crossProduct(op1, op2);
-                nd = Mat.crossProduct(np1, np2);
+                od = Mat.crossProduct(fix, op);
+                nd = Mat.crossProduct(fix, np);
 
                 // Intersection between the two directions
                 S = Mat.crossProduct(od, nd);
@@ -1183,45 +1226,18 @@ define([
                     return;
                 }
 
-                // Normalize the coordinates
-                S[1] /= S[0];
-                S[2] /= S[0];
+                alpha = Geometry.rad(op.slice(1), fix.slice(1), np.slice(1));
 
-                if (Type.exists(evt.rotation) && evt.type !== 'pointermove') {
-                    // iOS touch events contain the angle for free
-                    alpha = evt.rotation - this.previousRotation;
-                    this.previousRotation = evt.rotation;
-                    alpha *= -pi180;
-                } else {
-                    // For pointer events, the rotation angle has to be calculated.
-                    alpha = Geometry.rad(omid.slice(1), S.slice(1), nmid.slice(1));
-                }
-
-                t1 = this.create('transform', [alpha, S[1], S[2]], {type: 'rotate'});
-
-                // Old midpoint of fingers after first transformation:
+                t1 = this.create('transform', [alpha, [fix[1], fix[2]]], {type: 'rotate'});
                 t1.update();
-                omid = Mat.matVecMult(t1.matrix, omid);
-                omid[1] /= omid[0];
-                omid[2] /= omid[0];
 
-                // Shift to the new mid point
-                t2 = this.create('transform', [nmid[1] - omid[1], nmid[2] - omid[2]], {type: 'translate'});
-                t2.update();
-
-                t1.melt(t2);
                 if (Type.evaluate(drag.visProp.scalable)) {
                     // Scale
-                    if (Type.exists(evt.scale)) {
-                        d = evt.scale / this.previousScale;
-                        this.previousScale = evt.scale;
-                    } else {
-                        d = Geometry.distance(np1, np2) / Geometry.distance(op1, op2);
-                    }
+                    d = Geometry.distance(np, fix) / Geometry.distance(op, fix);
 
-                    t3 = this.create('transform', [-nmid[1], -nmid[2]], {type: 'translate'});
+                    t3 = this.create('transform', [-fix[1], -fix[2]], {type: 'translate'});
                     t4 = this.create('transform', [d, d], {type: 'scale'});
-                    t5 = this.create('transform', [nmid[1], nmid[2]], {type: 'translate'});
+                    t5 = this.create('transform', [fix[1], fix[2]], {type: 'translate'});
                     t1.melt(t3).melt(t4).melt(t5);
                 }
 
@@ -1252,46 +1268,48 @@ define([
 
         /*
          * Moves, rotates and scales a circle with two fingers.
-         * @param {JXG.Coords} np1c x,y coordinates of first touch
-         * @param {JXG.Coords} np2c x,y coordinates of second touch
-         * @param {object} o The touch object that is dragged: {JXG.Board#touches}.
+         * @param {Array} tar Array conatining touch event objects: {JXG.Board#touches.targets}.
          * @param {object} drag The object that is dragged:
+         * @param {Number} id pointerId of the event. In case of old touch event this is emulated.
          */
-        twoFingerTouchCircle: function (np1c, np2c, o, drag) {
-            var np1, np2, op1, op2,
-                d, alpha, t1, t2, t3, t4, t5;
+        twoFingerTouchCircle: function (tar, drag, id) {
+            var fixEl, moveEl, np, op, fix,
+                d, alpha, t1, t2, t3, t4;
 
-            if (drag.method === 'pointCircle' ||
-                    drag.method === 'pointLine') {
+            if (drag.method === 'pointCircle' || drag.method === 'pointLine') {
                 return;
             }
 
-            if (Type.exists(o.targets[0]) &&
-                    Type.exists(o.targets[1]) &&
-                    !isNaN(o.targets[0].Xprev + o.targets[0].Yprev + o.targets[1].Xprev + o.targets[1].Yprev)) {
+            if (Type.exists(tar[0]) && Type.exists(tar[1]) &&
+                !isNaN(tar[0].Xprev + tar[0].Yprev + tar[1].Xprev + tar[1].Yprev)) {
 
-                np1 = np1c.usrCoords;
-                np2 = np2c.usrCoords;
+                if (id === tar[0].num) {
+                    fixEl  = tar[1];
+                    moveEl = tar[0];
+                } else {
+                    fixEl  = tar[0];
+                    moveEl = tar[1];
+                }
+
+                fix = (new Coords(Const.COORDS_BY_SCREEN, [fixEl.Xprev, fixEl.Yprev], this)).usrCoords;
                 // Previous finger position
-                op1 = (new Coords(Const.COORDS_BY_SCREEN, [o.targets[0].Xprev, o.targets[0].Yprev], this)).usrCoords;
-                op2 = (new Coords(Const.COORDS_BY_SCREEN, [o.targets[1].Xprev, o.targets[1].Yprev], this)).usrCoords;
+                op = (new Coords(Const.COORDS_BY_SCREEN, [moveEl.Xprev, moveEl.Yprev], this)).usrCoords;
+                // New finger position
+                np = (new Coords(Const.COORDS_BY_SCREEN, [moveEl.X, moveEl.Y], this)).usrCoords;
 
-                // Shift by the movement of the first finger
-                t1 = this.create('transform', [np1[1] - op1[1], np1[2] - op1[2]], {type: 'translate'});
-                alpha = Geometry.rad(op2.slice(1), np1.slice(1), np2.slice(1));
+                alpha = Geometry.rad(op.slice(1), fix.slice(1), np.slice(1));
 
                 // Rotate and scale by the movement of the second finger
-                t2 = this.create('transform', [-np1[1], -np1[2]], {type: 'translate'});
-                t3 = this.create('transform', [alpha], {type: 'rotate'});
-                t1.melt(t2).melt(t3);
-
+                t1 = this.create('transform', [-fix[1], -fix[2]], {type: 'translate'});
+                t2 = this.create('transform', [alpha], {type: 'rotate'});
+                t1.melt(t2);
                 if (Type.evaluate(drag.visProp.scalable)) {
-                    d = Geometry.distance(np1, np2) / Geometry.distance(op1, op2);
-                    t4 = this.create('transform', [d, d], {type: 'scale'});
-                    t1.melt(t4);
+                    d = Geometry.distance(fix, np) / Geometry.distance(fix, op);
+                    t3 = this.create('transform', [d, d], {type: 'scale'});
+                    t1.melt(t3);
                 }
-                t5 = this.create('transform', [np1[1], np1[2]], {type: 'translate'});
-                t1.melt(t5);
+                t4 = this.create('transform', [fix[1], fix[2]], {type: 'translate'});
+                t1.melt(t4);
 
                 if (drag.center.draggable()) {
                     t1.applyOnce([drag.center]);
@@ -1442,20 +1460,20 @@ define([
          * @param  {Object} evt Event from touchStartListener
          * @return {Boolean}   returns if the origin is moved.
          */
-        touchOriginMoveStart: function (evt) {
+        touchStartMoveOriginOneFinger: function (evt) {
             var touches = evt[JXG.touchProperty],
-                r, pos;
+                conditions, pos;
 
-            r = this.attr.pan.enabled &&
+            conditions = this.attr.pan.enabled &&
                 !this.attr.pan.needtwofingers &&
                 touches.length === 1;
 
-            if (r) {
+            if (conditions) {
                 pos = this.getMousePosition(evt, 0);
                 this.initMoveOrigin(pos[0], pos[1]);
             }
 
-            return r;
+            return conditions;
         },
 
         /**
@@ -1502,9 +1520,6 @@ define([
                 this.addMouseEventHandlers();
                 this.addTouchEventHandlers();
             }
-            //if (Env.isBrowser) {
-            //Env.addEvent(window, 'resize', this.update, this);
-            //}
 
             // This one produces errors on IE
             //Env.addEvent(this.containerObj, 'contextmenu', function (e) { e.preventDefault(); return false;}, this);
@@ -1520,6 +1535,44 @@ define([
             }
 
             this.addFullscreenEventHandlers();
+            this.addKeyboardEventHandlers();
+
+            if (Env.isBrowser) {
+                try {
+                    // resizeObserver: triggered if size of the JSXGraph div changes.
+                    this.startResizeObserver();
+                } catch (err) {
+                    // resize event: triggered if size of window changes
+                    Env.addEvent(window, 'resize', this.resizeListener, this);
+                    // intersectionObserver: triggered if JSXGraph becomes visible.
+                    this.startIntersectionObserver();
+                }
+                // Scroll event: needs to be captured since on mobile devices
+                // sometimes a header bar is displayed / hidden, which triggers a
+                // resize event.
+                Env.addEvent(window, 'scroll', this.scrollListener, this);
+            }
+        },
+
+        /**
+         * Remove all event handlers from the board object
+         */
+        removeEventHandlers: function () {
+            this.removeMouseEventHandlers();
+            this.removeTouchEventHandlers();
+            this.removePointerEventHandlers();
+
+            this.removeFullscreenEventHandlers();
+            this.removeKeyboardEventHandlers();
+            if (Env.isBrowser) {
+                if (Type.exists(this.resizeObserver)) {
+                    this.stopResizeObserver();
+                } else {
+                    Env.removeEvent(window, 'resize', this.resizeListener, this);
+                    this.stopIntersectionObserver();
+                }
+                Env.removeEvent(window, 'scroll', this.scrollListener, this);
+            }
         },
 
         /**
@@ -1527,13 +1580,14 @@ define([
          */
         addPointerEventHandlers: function () {
             if (!this.hasPointerHandlers && Env.isBrowser) {
+                var moveTarget = this.attr.movetarget || this.containerObj;
+
                 if (window.navigator.msPointerEnabled) {  // IE10-
                     Env.addEvent(this.containerObj, 'MSPointerDown', this.pointerDownListener, this);
-                    Env.addEvent(this.containerObj, 'MSPointerMove', this.pointerMoveListener, this);
+                    Env.addEvent(moveTarget, 'MSPointerMove', this.pointerMoveListener, this);
                 } else {
                     Env.addEvent(this.containerObj, 'pointerdown', this.pointerDownListener, this);
-                    Env.addEvent(this.containerObj, 'pointermove', this.pointerMoveListener, this);
-                    // Env.addEvent(this.containerObj, 'pointerout', this.pointerOutListener, this);
+                    Env.addEvent(moveTarget, 'pointermove', this.pointerMoveListener, this);
                 }
                 Env.addEvent(this.containerObj, 'mousewheel', this.mouseWheelListener, this);
                 Env.addEvent(this.containerObj, 'DOMMouseScroll', this.mouseWheelListener, this);
@@ -1553,8 +1607,10 @@ define([
          */
         addMouseEventHandlers: function () {
             if (!this.hasMouseHandlers && Env.isBrowser) {
+                var moveTarget = this.attr.movetarget || this.containerObj;
+
                 Env.addEvent(this.containerObj, 'mousedown', this.mouseDownListener, this);
-                Env.addEvent(this.containerObj, 'mousemove', this.mouseMoveListener, this);
+                Env.addEvent(moveTarget, 'mousemove', this.mouseMoveListener, this);
 
                 Env.addEvent(this.containerObj, 'mousewheel', this.mouseWheelListener, this);
                 Env.addEvent(this.containerObj, 'DOMMouseScroll', this.mouseWheelListener, this);
@@ -1572,8 +1628,10 @@ define([
          */
         addTouchEventHandlers: function (appleGestures) {
             if (!this.hasTouchHandlers && Env.isBrowser) {
+                var moveTarget = this.attr.movetarget || this.containerObj;
+
                 Env.addEvent(this.containerObj, 'touchstart', this.touchStartListener, this);
-                Env.addEvent(this.containerObj, 'touchmove', this.touchMoveListener, this);
+                Env.addEvent(moveTarget, 'touchmove', this.touchMoveListener, this);
 
                 /*
                 if (!Type.exists(appleGestures) || appleGestures) {
@@ -1597,10 +1655,33 @@ define([
                 events = ['fullscreenchange', 'mozfullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'],
                 le = events.length;
 
-            for (i = 0; i < le; i++) {
-                Env.addEvent(this.document, events[i], this.fullscreenListener, this);
+            if (!this.hasFullsceenEventHandlers && Env.isBrowser) {
+                for (i = 0; i < le; i++) {
+                    Env.addEvent(this.document, events[i], this.fullscreenListener, this);
+                }
+                this.hasFullsceenEventHandlers = true;
             }
-            this.hasFullsceenEventHandlers = true;
+        },
+
+        addKeyboardEventHandlers: function() {
+            if (!this.hasKeyboardHandlers && Env.isBrowser) {
+                Env.addEvent(this.containerObj, 'keydown', this.keyDownListener, this);
+                Env.addEvent(this.containerObj, 'focusin', this.keyFocusInListener, this);
+                Env.addEvent(this.containerObj, 'focusout', this.keyFocusOutListener, this);
+                this.hasKeyboardHandlers = true;
+            }
+        },
+
+        /**
+         * Remove all registered touch event handlers.
+         */
+        removeKeyboardEventHandlers: function () {
+            if (this.hasKeyboardHandlers && Env.isBrowser) {
+                Env.removeEvent(this.containerObj, 'keydown', this.keyDownListener, this);
+                Env.removeEvent(this.containerObj, 'focusin', this.keyFocusInListener, this);
+                Env.removeEvent(this.containerObj, 'focusout', this.keyFocusOutListener, this);
+                this.hasKeyboardHandlers = false;
+            }
         },
 
         /**
@@ -1614,8 +1695,9 @@ define([
 
             if (this.hasFullsceenEventHandlers && Env.isBrowser) {
                 for (i = 0; i < le; i++) {
-                        Env.removeEvent(this.document, events[i], this.fullscreenListener, this);
+                    Env.removeEvent(this.document, events[i], this.fullscreenListener, this);
                 }
+                this.hasFullsceenEventHandlers = false;
             }
         },
 
@@ -1624,13 +1706,14 @@ define([
          */
         removePointerEventHandlers: function () {
             if (this.hasPointerHandlers && Env.isBrowser) {
+                var moveTarget = this.attr.movetarget || this.containerObj;
+
                 if (window.navigator.msPointerEnabled) {  // IE10-
                     Env.removeEvent(this.containerObj, 'MSPointerDown', this.pointerDownListener, this);
-                    Env.removeEvent(this.containerObj, 'MSPointerMove', this.pointerMoveListener, this);
+                    Env.removeEvent(moveTarget, 'MSPointerMove', this.pointerMoveListener, this);
                 } else {
                     Env.removeEvent(this.containerObj, 'pointerdown', this.pointerDownListener, this);
-                    Env.removeEvent(this.containerObj, 'pointermove', this.pointerMoveListener, this);
-                    // Env.removeEvent(this.containerObj, 'pointerout', this.pointerOutListener, this);
+                    Env.removeEvent(moveTarget, 'pointermove', this.pointerMoveListener, this);
                 }
 
                 Env.removeEvent(this.containerObj, 'mousewheel', this.mouseWheelListener, this);
@@ -1638,9 +1721,10 @@ define([
 
                 if (this.hasPointerUp) {
                     if (window.navigator.msPointerEnabled) {  // IE10-
-                        Env.removeEvent(this.document, 'MSPointerUp', this.pointerUpListener, this);
+                        Env.removeEvent(this.document, 'MSPointerUp',   this.pointerUpListener, this);
                     } else {
-                        Env.removeEvent(this.document, 'pointerup', this.pointerUpListener, this);
+                        Env.removeEvent(this.document, 'pointerup',     this.pointerUpListener, this);
+                        Env.removeEvent(this.document, 'pointercancel', this.pointerUpListener, this);
                     }
                     this.hasPointerUp = false;
                 }
@@ -1654,8 +1738,10 @@ define([
          */
         removeMouseEventHandlers: function () {
             if (this.hasMouseHandlers && Env.isBrowser) {
+                var moveTarget = this.attr.movetarget || this.containerObj;
+
                 Env.removeEvent(this.containerObj, 'mousedown', this.mouseDownListener, this);
-                Env.removeEvent(this.containerObj, 'mousemove', this.mouseMoveListener, this);
+                Env.removeEvent(moveTarget, 'mousemove', this.mouseMoveListener, this);
 
                 if (this.hasMouseUp) {
                     Env.removeEvent(this.document, 'mouseup', this.mouseUpListener, this);
@@ -1674,8 +1760,10 @@ define([
          */
         removeTouchEventHandlers: function () {
             if (this.hasTouchHandlers && Env.isBrowser) {
+                var moveTarget = this.attr.movetarget || this.containerObj;
+
                 Env.removeEvent(this.containerObj, 'touchstart', this.touchStartListener, this);
-                Env.removeEvent(this.containerObj, 'touchmove', this.touchMoveListener, this);
+                Env.removeEvent(moveTarget, 'touchmove', this.touchMoveListener, this);
 
                 if (this.hasTouchEnd) {
                     Env.removeEvent(this.document, 'touchend', this.touchEndListener, this);
@@ -1684,18 +1772,6 @@ define([
 
                 this.hasTouchHandlers = false;
             }
-        },
-
-        /**
-         * Remove all event handlers from the board object
-         */
-        removeEventHandlers: function () {
-            this.removeMouseEventHandlers();
-            this.removeTouchEventHandlers();
-            this.removePointerEventHandlers();
-
-            this.removeFullscreenEventHandlers();
-
         },
 
         /**
@@ -1900,33 +1976,20 @@ define([
             return false;
         },
 
+        /*
+         * Pointer events
+         */
+
         /**
-         * Fix for Firefox browser: When using a second finger, the
-         * touch event for the first finger is sent again.
          *
-         * @param  {[type]} evt Event object
+         * Check if pointer event is already registered in {@link JXG.Board#_board_touches}.
+         *
+         * @param  {Object} evt Event object
          * @return {Boolean} true if down event has already been sent.
          * @private
          */
-        _isPointerEventAlreadyThere: function (evt) {
-            var i;
-
-            for (i = 0; i < this._board_touches.length; i++) {
-                if (this._board_touches[i].pointerId === evt.pointerId) {
-                    return true;
-                }
-            }
-
-            return false;
-        },
-
-        /**
-         * pointer-Events
-         */
-        _pointerIsTouchRegistered: function(evt) {
-            var i,
-                len = this._board_touches.length,
-                found = false;
+         _isPointerRegistered: function(evt) {
+            var i, len = this._board_touches.length;
 
             for (i = 0; i < len; i++) {
                 if (this._board_touches[i].pointerId === evt.pointerId) {
@@ -1936,7 +1999,18 @@ define([
             return false;
         },
 
-        _pointerAddBoardTouches: function (evt) {
+        /**
+         *
+         * Store the position of a pointer event.
+         * If not yet done, registers a pointer event in {@link JXG.Board#_board_touches}.
+         * Allows to follow the path of that finger on the screen.
+         * Only two simultaneous touches are supported.
+         *
+         * @param {Object} evt Event object
+         * @returns {JXG.Board} Reference to the board
+         * @private
+         */
+         _pointerStorePosition: function (evt) {
             var i, found;
 
             for (i = 0, found = false; i < this._board_touches.length; i++) {
@@ -1948,7 +2022,8 @@ define([
                 }
             }
 
-            if (!found) {
+            // Restrict the number of simultaneous touches to 2
+            if (!found && this._board_touches.length < 2) {
                 this._board_touches.push({
                     pointerId: evt.pointerId,
                     clientX: evt.clientX,
@@ -1959,7 +2034,15 @@ define([
             return this;
         },
 
-        _pointerRemoveBoardTouches: function (evt) {
+        /**
+         * Deregisters a pointer event in {@link JXG.Board#_board_touches}.
+         * It happens if a finger has been lifted from the screen.
+         *
+         * @param {Object} evt Event object
+         * @returns {JXG.Board} Reference to the board
+         * @private
+         */
+        _pointerRemoveTouches: function (evt) {
             var i;
             for (i = 0; i < this._board_touches.length; i++) {
                 if (this._board_touches[i].pointerId === evt.pointerId) {
@@ -1969,6 +2052,22 @@ define([
             }
 
             return this;
+        },
+
+        /**
+         * Remove all registered fingers from {@link JXG.Board#_board_touches}.
+         * This might be necessary if too many fingers have been registered.
+         * @returns {JXG.Board} Reference to the board
+         * @private
+         */
+        _pointerClearTouches: function() {
+            if (this._board_touches.length > 0) {
+                this.dehighlightAll();
+            }
+            this.updateQuality = this.BOARD_QUALITY_HIGH;
+            this.mode = this.BOARD_MODE_NONE;
+            this._board_touches = [];
+            this.touches = [];
         },
 
         /**
@@ -1988,7 +2087,7 @@ define([
          */
         _getPointerInputDevice: function(evt) {
             if (Env.isBrowser) {
-                if (evt.pointerType === 'touch' || // New
+                if (evt.pointerType === 'touch' ||        // New
                     (window.navigator.msMaxTouchPoints && // Old
                         window.navigator.msMaxTouchPoints > 1)) {
                     return 'touch';
@@ -2011,20 +2110,28 @@ define([
          */
         pointerDownListener: function (evt, object) {
             var i, j, k, pos, elements, sel,
-                type = 'mouse', // in case of no browser
-                found, target, result;
+                target_obj,
+                type = 'mouse', // Used in case of no browser
+                found, target;
 
-            // Temporary fix for Firefox pointer events:
-            // When using two fingers, the first touch down event is fired again.
-            if (!object && this._isPointerEventAlreadyThere(evt)) {
+            // Fix for Firefox browser: When using a second finger, the
+            // touch event for the first finger is sent again.
+            if (!object && this._isPointerRegistered(evt)) {
                 return false;
+            }
+
+            if (!object && evt.isPrimary) {
+                // First finger down. To be on the safe side this._board_touches is cleared.
+                this._pointerClearTouches();
             }
 
             if (!this.hasPointerUp) {
                 if (window.navigator.msPointerEnabled) {  // IE10-
-                    Env.addEvent(this.document, 'MSPointerUp', this.pointerUpListener, this);
+                    Env.addEvent(this.document, 'MSPointerUp',   this.pointerUpListener, this);
                 } else {
-                    Env.addEvent(this.document, 'pointerup', this.pointerUpListener, this);
+                    // 'pointercancel' is fired e.g. if the finger leaves the browser and drags down the system menu on Android
+                    Env.addEvent(this.document, 'pointerup',     this.pointerUpListener, this);
+                    Env.addEvent(this.document, 'pointercancel', this.pointerUpListener, this);
                 }
                 this.hasPointerUp = true;
             }
@@ -2054,14 +2161,14 @@ define([
             type = this._inputDevice;
             this.options.precision.hasPoint = this.options.precision[type];
 
-            // This should be easier than the touch events. Every pointer device gets its own pointerId, e.g. the mouse
-            // always has id 1, fingers and pens get unique ids every time a pointerDown event is fired and they will
+            // Handling of multi touch with pointer events should be easier than the touch events.
+            // Every pointer device has its own pointerId, e.g. the mouse
+            // always has id 1 or 0, fingers and pens get unique ids every time a pointerDown event is fired and they will
             // keep this id until a pointerUp event is fired. What we have to do here is:
             //  1. collect all elements under the current pointer
             //  2. run through the touches control structure
             //    a. look for the object collected in step 1.
             //    b. if an object is found, check the number of pointers. If appropriate, add the pointer.
-
             pos = this.getMousePosition(evt);
 
             // selection
@@ -2079,45 +2186,41 @@ define([
                 elements = this.initMoveObject(pos[0], pos[1], evt, type);
             }
 
-            // if no draggable object can be found, get out here immediately
+            target_obj = {
+                num: evt.pointerId,
+                X: pos[0],
+                Y: pos[1],
+                Xprev: NaN,
+                Yprev: NaN,
+                Xstart: [],
+                Ystart: [],
+                Zstart: []
+            };
+
+            // If no draggable object can be found, get out here immediately
             if (elements.length > 0) {
                 // check touches structure
                 target = elements[elements.length - 1];
                 found = false;
+
+                // Reminder: this.touches is the list of elements which
+                // currently "possess" a pointer (mouse, pen, finger)
                 for (i = 0; i < this.touches.length; i++) {
-                    // the target is already in our touches array, try to add the pointer to the existing touch
+                    // An element receives a further touch, i.e.
+                    // the target is already in our touches array, add the pointer to the existing touch
                     if (this.touches[i].obj === target) {
                         j = i;
-                        k = this.touches[i].targets.push({
-                            num: evt.pointerId,
-                            X: pos[0],
-                            Y: pos[1],
-                            Xprev: NaN,
-                            Yprev: NaN,
-                            Xstart: [],
-                            Ystart: [],
-                            Zstart: []
-                        }) - 1;
-
+                        k = this.touches[i].targets.push(target_obj) - 1;
                         found = true;
                         break;
                     }
                 }
-
                 if (!found) {
+                    // An new element hae been touched.
                     k = 0;
                     j = this.touches.push({
                         obj: target,
-                        targets: [{
-                            num: evt.pointerId,
-                            X: pos[0],
-                            Y: pos[1],
-                            Xprev: NaN,
-                            Yprev: NaN,
-                            Xstart: [],
-                            Ystart: [],
-                            Zstart: []
-                        }]
+                        targets: [target_obj]
                     }) - 1;
                 }
 
@@ -2126,7 +2229,7 @@ define([
 
                 this.saveStartPos(target, this.touches[j].targets[k]);
 
-                // prevent accidental text selection
+                // Prevent accidental text selection
                 // this could get us new trouble: input fields, links and drop down boxes placed as text
                 // on the board don't work anymore.
                 if (evt && evt.preventDefault) {
@@ -2141,19 +2244,29 @@ define([
                 evt.stopPropagation();
             }
 
-            if (Env.isBrowser && this._getPointerInputDevice(evt) !== 'touch') {
+            if (!Env.isBrowser) {
+                return false;
+            }
+            if (this._getPointerInputDevice(evt) !== 'touch') {
                 if (this.mode === this.BOARD_MODE_NONE) {
                     this.mouseOriginMoveStart(evt);
                 }
             } else {
-                this._pointerAddBoardTouches(evt);
+                this._pointerStorePosition(evt);
                 evt.touches = this._board_touches;
 
-                // See touchStartListener
-                if (this.mode === this.BOARD_MODE_NONE && this.touchOriginMoveStart(evt)) {
-                } else if ((this.mode === this.BOARD_MODE_NONE ||
-                            this.mode === this.BOARD_MODE_MOVE_ORIGIN) &&
-                           evt.touches.length == 2) {
+                // Touch events on empty areas of the board are handled here, see also touchStartListener
+                // 1. case: one finger. If allowed, this triggers pan with one finger
+                if (evt.touches.length === 1 &&
+                    this.mode === this.BOARD_MODE_NONE &&
+                    this.touchStartMoveOriginOneFinger(evt)) {
+                        // Empty by purpose
+                } else if (evt.touches.length === 2 &&
+                            (this.mode === this.BOARD_MODE_NONE || this.mode === this.BOARD_MODE_MOVE_ORIGIN)
+                        ) {
+                    // 2. case: two fingers: pinch to zoom or pan with two fingers needed.
+                    // This happens when the second finger hits the device. First, the
+                    // "one finger pan mode" has to be cancelled.
                     if (this.mode === this.BOARD_MODE_MOVE_ORIGIN) {
                         this.originMoveEnd();
                     }
@@ -2166,20 +2279,20 @@ define([
             return false;
         },
 
-        /**
-         * Called if pointer leaves an HTML tag. Is called by the inner-most tag.
-         * That means, if a JSXGraph text, i.e. an HTML div, is placed close
-         * to the border of the board, this pointerout event will be ignored.
-         * @param  {Event} evt
-         * @return {Boolean}
-         */
-        pointerOutListener: function (evt) {
-            if (evt.target === this.containerObj ||
-                (this.renderer.type === 'svg' && evt.target === this.renderer.foreignObjLayer)) {
-                this.pointerUpListener(evt);
-            }
-            return this.mode === this.BOARD_MODE_NONE;
-        },
+        // /**
+        //  * Called if pointer leaves an HTML tag. It is called by the inner-most tag.
+        //  * That means, if a JSXGraph text, i.e. an HTML div, is placed close
+        //  * to the border of the board, this pointerout event will be ignored.
+        //  * @param  {Event} evt
+        //  * @return {Boolean}
+        //  */
+        // pointerOutListener: function (evt) {
+        //     if (evt.target === this.containerObj ||
+        //         (this.renderer.type === 'svg' && evt.target === this.renderer.foreignObjLayer)) {
+        //         this.pointerUpListener(evt);
+        //     }
+        //     return this.mode === this.BOARD_MODE_NONE;
+        // },
 
         /**
          * Called periodically by the browser while the user moves a pointing device across the screen.
@@ -2187,10 +2300,10 @@ define([
          * @returns {Boolean}
          */
         pointerMoveListener: function (evt) {
-            var i, j, pos,
+            var i, j, pos, touchTargets,
                 type = 'mouse'; // in case of no browser
 
-            if (this._getPointerInputDevice(evt) === 'touch' && !this._pointerIsTouchRegistered(evt)) {
+            if (this._getPointerInputDevice(evt) === 'touch' && !this._isPointerRegistered(evt)) {
                 // Test, if there was a previous down event of this _getPointerId
                 // (in case it is a touch event).
                 // Otherwise this move event is ignored. This is necessary e.g. for sketchometry.
@@ -2224,45 +2337,37 @@ define([
                 this.triggerEventHandlers(['touchmoveselecting', 'moveselecting', 'pointermoveselecting'], [evt, this.mode]);
             } else if (!this.mouseOriginMove(evt)) {
                 if (this.mode === this.BOARD_MODE_DRAG) {
-                    // Runs through all jsxgraph elements which are touched by at least one finger.
+                    // Run through all jsxgraph elements which are touched by at least one finger.
                     for (i = 0; i < this.touches.length; i++) {
+                        touchTargets = this.touches[i].targets;
                         // Run through all touch events which have been started on this jsxgraph element.
-                        for (j = 0; j < this.touches[i].targets.length; j++) {
-                            if (this.touches[i].targets[j].num === evt.pointerId) {
-                                if (this.touches[i].targets.length === 1) {
+                        for (j = 0; j < touchTargets.length; j++) {
+                            if (touchTargets[j].num === evt.pointerId) {
 
-                                    // Touch by one finger:  this is possible for all elements that can be dragged
-                                    this.touches[i].targets[j].X = evt.pageX;
-                                    this.touches[i].targets[j].Y = evt.pageY;
-                                    pos = this.getMousePosition(evt);
+                                pos = this.getMousePosition(evt);
+                                touchTargets[j].X = pos[0];
+                                touchTargets[j].Y = pos[1];
+
+                                if (touchTargets.length === 1) {
+                                    // Touch by one finger: this is possible for all elements that can be dragged
                                     this.moveObject(pos[0], pos[1], this.touches[i], evt, type);
-
-                                } else if (this.touches[i].targets.length === 2) {
-
+                                } else if (touchTargets.length === 2) {
                                     // Touch by two fingers: e.g. moving lines
-                                    this.touches[i].targets[j].X = evt.pageX;
-                                    this.touches[i].targets[j].Y = evt.pageY;
+                                    this.twoFingerMove(this.touches[i], evt.pointerId, evt);
 
-                                    this.twoFingerMove(
-                                        this.getMousePosition({
-                                            clientX: this.touches[i].targets[0].X,
-                                            clientY: this.touches[i].targets[0].Y
-                                        }),
-                                        this.getMousePosition({
-                                            clientX: this.touches[i].targets[1].X,
-                                            clientY: this.touches[i].targets[1].Y
-                                        }),
-                                        this.touches[i], evt);
+                                    touchTargets[j].Xprev = pos[0];
+                                    touchTargets[j].Yprev = pos[1];
                                 }
 
-                                // there is only one pointer in the evt object, there's no point in looking further
+                                // There is only one pointer in the evt object, so there's no point in looking further
                                 break;
                             }
                         }
                     }
                 } else {
                     if (this._getPointerInputDevice(evt) === 'touch') {
-                        this._pointerAddBoardTouches(evt);
+                        this._pointerStorePosition(evt);
+
                         if (this._board_touches.length === 2) {
                             evt.touches = this._board_touches;
                             this.gestureChangeListener(evt);
@@ -2292,21 +2397,20 @@ define([
          * @returns {Boolean}
          */
         pointerUpListener: function (evt) {
-            var i, j, found;
+            var i, j, found, touchTargets;
 
             this.triggerEventHandlers(['touchend', 'up', 'pointerup', 'MSPointerUp'], [evt]);
             this.displayInfobox(false);
 
             if (evt) {
                 for (i = 0; i < this.touches.length; i++) {
-                    for (j = 0; j < this.touches[i].targets.length; j++) {
-                        if (this.touches[i].targets[j].num === evt.pointerId) {
-                            this.touches[i].targets.splice(j, 1);
-
-                            if (this.touches[i].targets.length === 0) {
+                    touchTargets = this.touches[i].targets;
+                    for (j = 0; j < touchTargets.length; j++) {
+                        if (touchTargets[j].num === evt.pointerId) {
+                            touchTargets.splice(j, 1);
+                            if (touchTargets.length === 0) {
                                 this.touches.splice(i, 1);
                             }
-
                             break;
                         }
                     }
@@ -2334,27 +2438,27 @@ define([
                 }
             }
 
-            this._pointerRemoveBoardTouches(evt);
-
-            // if (this.touches.length === 0) {
-            if (this._board_touches.length === 0) {
+            // this._pointerRemoveTouches(evt);
+            // if (this._board_touches.length === 0) {
                 if (this.hasPointerUp) {
                     if (window.navigator.msPointerEnabled) {  // IE10-
-                        Env.removeEvent(this.document, 'MSPointerUp', this.pointerUpListener, this);
+                        Env.removeEvent(this.document, 'MSPointerUp',   this.pointerUpListener, this);
                     } else {
-                        Env.removeEvent(this.document, 'pointerup', this.pointerUpListener, this);
+                        Env.removeEvent(this.document, 'pointerup',     this.pointerUpListener, this);
+                        Env.removeEvent(this.document, 'pointercancel', this.pointerUpListener, this);
                     }
                     this.hasPointerUp = false;
                 }
 
-                this.dehighlightAll();
-                this.updateQuality = this.BOARD_QUALITY_HIGH;
-                this.mode = this.BOARD_MODE_NONE;
+                // this.dehighlightAll();
+                // this.updateQuality = this.BOARD_QUALITY_HIGH;
+                // this.mode = this.BOARD_MODE_NONE;
 
                 this.originMoveEnd();
                 this.update();
-            }
-
+            // }
+            // After one finger leaves the screen the gesture is stopped.
+            this._pointerClearTouches();
             return true;
         },
 
@@ -2368,11 +2472,11 @@ define([
          * @returns {Boolean} ...
          */
         touchStartListener: function (evt) {
-            var i, pos, elements, j, k, time,
+            var i, pos, elements, j, k,
                 eps = this.options.precision.touch,
                 obj, found, targets,
                 evtTouches = evt[JXG.touchProperty],
-                target;
+                target, touchTargets;
 
             if (!this.hasTouchEnd) {
                 Env.addEvent(this.document, 'touchend', this.touchEndListener, this);
@@ -2420,19 +2524,19 @@ define([
             }
 
             for (i = 0; i < this.touches.length; i++) {
-                for (j = 0; j < this.touches[i].targets.length; j++) {
-                    this.touches[i].targets[j].num = -1;
+                touchTargets = this.touches[i].targets;
+                for (j = 0; j < touchTargets.length; j++) {
+                    touchTargets[j].num = -1;
                     eps = this.options.precision.touch;
 
                     do {
                         for (k = 0; k < evtTouches.length; k++) {
                             // find the new targettouches
-                            if (Math.abs(Math.pow(evtTouches[k].screenX - this.touches[i].targets[j].X, 2) +
-                                    Math.pow(evtTouches[k].screenY - this.touches[i].targets[j].Y, 2)) < eps * eps) {
-                                this.touches[i].targets[j].num = k;
-
-                                this.touches[i].targets[j].X = evtTouches[k].screenX;
-                                this.touches[i].targets[j].Y = evtTouches[k].screenY;
+                            if (Math.abs(Math.pow(evtTouches[k].screenX - touchTargets[j].X, 2) +
+                                    Math.pow(evtTouches[k].screenY - touchTargets[j].Y, 2)) < eps * eps) {
+                                touchTargets[j].num = k;
+                                touchTargets[j].X = evtTouches[k].screenX;
+                                touchTargets[j].Y = evtTouches[k].screenY;
                                 evtTouches[k].jxg_isused = true;
                                 break;
                             }
@@ -2440,13 +2544,13 @@ define([
 
                         eps *= 2;
 
-                    } while (this.touches[i].targets[j].num === -1 &&
+                    } while (touchTargets[j].num === -1 &&
                              eps < this.options.precision.touchMax);
 
-                    if (this.touches[i].targets[j].num === -1) {
+                    if (touchTargets[j].num === -1) {
                         JXG.debug('i couldn\'t find a targettouches for target no ' + j + ' on ' + this.touches[i].obj.name + ' (' + this.touches[i].obj.id + '). Removed the target.');
                         JXG.debug('eps = ' + eps + ', touchMax = ' + Options.precision.touchMax);
-                        this.touches[i].targets.splice(i, 1);
+                        touchTargets.splice(i, 1);
                     }
 
                 }
@@ -2472,20 +2576,22 @@ define([
                     elements = this.initMoveObject(pos[0], pos[1], evt, 'touch');
                     if (elements.length !== 0) {
                         obj = elements[elements.length - 1];
+                        target = {num: i,
+                            X: evtTouches[i].screenX,
+                            Y: evtTouches[i].screenY,
+                            Xprev: NaN,
+                            Yprev: NaN,
+                            Xstart: [],
+                            Ystart: [],
+                            Zstart: []
+                        };
 
                         if (Type.isPoint(obj) ||
                                 obj.elementClass === Const.OBJECT_CLASS_TEXT ||
                                 obj.type === Const.OBJECT_TYPE_TICKS ||
                                 obj.type === Const.OBJECT_TYPE_IMAGE) {
-                            // it's a point, so it's single touch, so we just push it to our touches
-                            targets = [{num: i,
-                                        X: evtTouches[i].screenX,
-                                        Y: evtTouches[i].screenY,
-                                        Xprev: NaN,
-                                        Yprev: NaN,
-                                        Xstart: [],
-                                        Ystart: [],
-                                        Zstart: [] }];
+                            // It's a point, so it's single touch, so we just push it to our touches
+                            targets = [obj];
 
                             // For the UNDO/REDO of object moves
                             this.saveStartPos(obj, targets[0]);
@@ -2505,15 +2611,6 @@ define([
                                     found = true;
                                     // only add it, if we don't have two targets in there already
                                     if (this.touches[j].targets.length === 1) {
-                                        target = {num: i,
-                                                  X: evtTouches[i].screenX,
-                                                  Y: evtTouches[i].screenY,
-                                                  Xprev: NaN,
-                                                  Yprev: NaN,
-                                                  Xstart: [],
-                                                  Ystart: [],
-                                                  Zstart: [] };
-
                                         // For the UNDO/REDO of object moves
                                         this.saveStartPos(obj, target);
                                         this.touches[j].targets.push(target);
@@ -2527,14 +2624,7 @@ define([
                             // IF there is a second touch targetting this line, we will find it later on, and then add it to
                             // the touches control object.
                             if (!found) {
-                                targets = [{num: i,
-                                            X: evtTouches[i].screenX,
-                                            Y: evtTouches[i].screenY,
-                                            Xprev: NaN,
-                                            Yprev: NaN,
-                                            Xstart: [],
-                                            Ystart: [],
-                                            Zstart: [] }];
+                                targets = [target];
 
                                 // For the UNDO/REDO of object moves
                                 this.saveStartPos(obj, targets[0]);
@@ -2555,12 +2645,10 @@ define([
 
             // Touch events on empty areas of the board are handled here:
             // 1. case: one finger. If allowed, this triggers pan with one finger
-            if (this.mode === this.BOARD_MODE_NONE && this.touchOriginMoveStart(evt)) {
+            if (evtTouches.length === 1 && this.mode === this.BOARD_MODE_NONE && this.touchStartMoveOriginOneFinger(evt)) {
             } else if (evtTouches.length === 2 &&
-                        (this.mode === this.BOARD_MODE_NONE ||
-                         this.mode === this.BOARD_MODE_MOVE_ORIGIN /*||
-                         (this.mode === this.BOARD_MODE_DRAG && this.touches.length == 1) */
-                        )) {
+                        (this.mode === this.BOARD_MODE_NONE || this.mode === this.BOARD_MODE_MOVE_ORIGIN)
+                    ) {
                 // 2. case: two fingers: pinch to zoom or pan with two fingers needed.
                 // This happens when the second finger hits the device. First, the
                 // "one finger pan mode" has to be cancelled.
@@ -2583,7 +2671,8 @@ define([
          * @returns {Boolean}
          */
         touchMoveListener: function (evt) {
-            var i, pos1, pos2, time,
+            var i, pos1, pos2,
+                touchTargets,
                 evtTouches = evt[JXG.touchProperty];
 
             if (!this.checkFrameRate(evt)) {
@@ -2620,40 +2709,52 @@ define([
                         // Runs over through all elements which are touched
                         // by at least one finger.
                         for (i = 0; i < this.touches.length; i++) {
-                            if (this.touches[i].targets.length === 1) {
+                            touchTargets = this.touches[i].targets;
+                            if (touchTargets.length === 1) {
+
+
                                 // Touch by one finger:  this is possible for all elements that can be dragged
-                                if (evtTouches[this.touches[i].targets[0].num]) {
-                                    pos1 = this.getMousePosition(evt, this.touches[i].targets[0].num);
+                                if (evtTouches[touchTargets[0].num]) {
+                                    pos1 = this.getMousePosition(evt, touchTargets[0].num);
                                     if (pos1[0] < 0 || pos1[0] > this.canvasWidth ||
                                         pos1[1] < 0 || pos1[1] > this.canvasHeight) {
                                         return;
                                     }
-                                    this.touches[i].targets[0].X = evtTouches[this.touches[i].targets[0].num].screenX;
-                                    this.touches[i].targets[0].Y = evtTouches[this.touches[i].targets[0].num].screenY;
+                                    touchTargets[0].X = pos1[0];
+                                    touchTargets[0].Y = pos1[1];
                                     this.moveObject(pos1[0], pos1[1], this.touches[i], evt, 'touch');
                                 }
 
-                            } else if (this.touches[i].targets.length === 2 &&
-                                        this.touches[i].targets[0].num > -1 &&
-                                        this.touches[i].targets[1].num > -1) {
+                            } else if (touchTargets.length === 2 &&
+                                touchTargets[0].num > -1 &&
+                                touchTargets[1].num > -1) {
+
                                 // Touch by two fingers: moving lines, ...
-                                if (evtTouches[this.touches[i].targets[0].num] &&
-                                    evtTouches[this.touches[i].targets[1].num]) {
+                                if (evtTouches[touchTargets[0].num] &&
+                                    evtTouches[touchTargets[1].num]) {
 
                                     // Get coordinates of the two touches
-                                    pos1 = this.getMousePosition(evt, this.touches[i].targets[0].num);
-                                    pos2 = this.getMousePosition(evt, this.touches[i].targets[1].num);
+                                    pos1 = this.getMousePosition(evt, touchTargets[0].num);
+                                    pos2 = this.getMousePosition(evt, touchTargets[1].num);
                                     if (pos1[0] < 0 || pos1[0] > this.canvasWidth ||
                                         pos1[1] < 0 || pos1[1] > this.canvasHeight ||
                                         pos2[0] < 0 || pos2[0] > this.canvasWidth ||
                                         pos2[1] < 0 || pos2[1] > this.canvasHeight) {
                                         return;
                                     }
-                                    this.touches[i].targets[0].X = evtTouches[this.touches[i].targets[0].num].screenX;
-                                    this.touches[i].targets[0].Y = evtTouches[this.touches[i].targets[0].num].screenY;
-                                    this.touches[i].targets[1].X = evtTouches[this.touches[i].targets[1].num].screenX;
-                                    this.touches[i].targets[1].Y = evtTouches[this.touches[i].targets[1].num].screenY;
-                                    this.twoFingerMove(pos1, pos2, this.touches[i], evt);
+
+                                    touchTargets[0].X = pos1[0];
+                                    touchTargets[0].Y = pos1[1];
+                                    touchTargets[1].X = pos2[0];
+                                    touchTargets[1].Y = pos2[1];
+
+                                    this.twoFingerMove(this.touches[i], touchTargets[0].num, evt);
+                                    this.twoFingerMove(this.touches[i], touchTargets[1].num);
+
+                                    touchTargets[0].Xprev = pos1[0];
+                                    touchTargets[0].Yprev = pos1[1];
+                                    touchTargets[1].Xprev = pos2[0];
+                                    touchTargets[1].Yprev = pos2[1];
                                 }
                             }
                         }
@@ -2688,7 +2789,8 @@ define([
             var i, j, k,
                 eps = this.options.precision.touch,
                 tmpTouches = [], found, foundNumber,
-                evtTouches = evt && evt[JXG.touchProperty];
+                evtTouches = evt && evt[JXG.touchProperty],
+                touchTargets;
 
             this.triggerEventHandlers(['touchend', 'up'], [evt]);
             this.displayInfobox(false);
@@ -2724,15 +2826,16 @@ define([
                     // could all targets of the current this.touches.obj be assigned to targettouches?
                     found = false;
                     foundNumber = 0;
+                    touchTargets = tmpTouches[i].targets;
 
-                    for (j = 0; j < tmpTouches[i].targets.length; j++) {
-                        tmpTouches[i].targets[j].found = false;
+                    for (j = 0; j < touchTargets.length; j++) {
+                        touchTargets[j].found = false;
                         for (k = 0; k < evtTouches.length; k++) {
-                            if (Math.abs(Math.pow(evtTouches[k].screenX - tmpTouches[i].targets[j].X, 2) + Math.pow(evtTouches[k].screenY - tmpTouches[i].targets[j].Y, 2)) < eps * eps) {
-                                tmpTouches[i].targets[j].found = true;
-                                tmpTouches[i].targets[j].num = k;
-                                tmpTouches[i].targets[j].X = evtTouches[k].screenX;
-                                tmpTouches[i].targets[j].Y = evtTouches[k].screenY;
+                            if (Math.abs(Math.pow(evtTouches[k].screenX - touchTargets[j].X, 2) + Math.pow(evtTouches[k].screenY - touchTargets[j].Y, 2)) < eps * eps) {
+                                touchTargets[j].found = true;
+                                touchTargets[j].num = k;
+                                touchTargets[j].X = evtTouches[k].screenX;
+                                touchTargets[j].Y = evtTouches[k].screenY;
                                 foundNumber += 1;
                                 break;
                             }
@@ -2740,9 +2843,9 @@ define([
                     }
 
                     if (Type.isPoint(tmpTouches[i].obj)) {
-                        found = (tmpTouches[i].targets[0] && tmpTouches[i].targets[0].found);
+                        found = (touchTargets[0] && touchTargets[0].found);
                     } else if (tmpTouches[i].obj.elementClass === Const.OBJECT_CLASS_LINE) {
-                        found = (tmpTouches[i].targets[0] && tmpTouches[i].targets[0].found) || (tmpTouches[i].targets[1] && tmpTouches[i].targets[1].found);
+                        found = (touchTargets[0] && touchTargets[0].found) || (touchTargets[1] && touchTargets[1].found);
                     } else if (tmpTouches[i].obj.elementClass === Const.OBJECT_CLASS_CIRCLE) {
                         found = foundNumber === 1 || foundNumber === 3;
                     }
@@ -2754,17 +2857,17 @@ define([
                             targets: []
                         });
 
-                        for (j = 0; j < tmpTouches[i].targets.length; j++) {
-                            if (tmpTouches[i].targets[j].found) {
+                        for (j = 0; j < touchTargets.length; j++) {
+                            if (touchTargets[j].found) {
                                 this.touches[this.touches.length - 1].targets.push({
-                                    num: tmpTouches[i].targets[j].num,
-                                    X: tmpTouches[i].targets[j].screenX,
-                                    Y: tmpTouches[i].targets[j].screenY,
+                                    num: touchTargets[j].num,
+                                    X: touchTargets[j].screenX,
+                                    Y: touchTargets[j].screenY,
                                     Xprev: NaN,
                                     Yprev: NaN,
-                                    Xstart: tmpTouches[i].targets[j].Xstart,
-                                    Ystart: tmpTouches[i].targets[j].Ystart,
-                                    Zstart: tmpTouches[i].targets[j].Zstart
+                                    Xstart: touchTargets[j].Xstart,
+                                    Ystart: touchTargets[j].Ystart,
+                                    Zstart: touchTargets[j].Zstart
                                 });
                             }
                         }
@@ -2854,6 +2957,7 @@ define([
                 this.mode = this.BOARD_MODE_NONE;
                 result = true;
             } else {
+                /** @ignore */
                 this.mouse = {
                     obj: null,
                     targets: [{
@@ -2978,6 +3082,7 @@ define([
             }
 
             // release dragged mouse object
+            /** @ignore */
             this.mouse = null;
         },
 
@@ -3007,6 +3112,388 @@ define([
             return false;
         },
 
+        /**
+         * Allow moving of JSXGraph elements with arrow keys
+         * and zooming of the construction with + / -.
+         * Panning of the construction is done with arrow keys
+         * if the pan key (shift or ctrl) is pressed.
+         * The selection of the element is done with the tab key.
+         *
+         * @param  {Event} evt The browser's event object
+         *
+         * @see JXG.Board#keyboard
+         * @see JXG.Board#keyFocusInListener
+         * @see JXG.Board#keyFocusOutListener
+         *
+         */
+        keyDownListener: function (evt) {
+            var id_node = evt.target.id,
+                id, el, res,
+                sX = 0,
+                sY = 0,
+                // dx, dy are provided in screen units and
+                // are converted to user coordinates
+                dx = Type.evaluate(this.attr.keyboard.dx) / this.unitX,
+                dy = Type.evaluate(this.attr.keyboard.dy) / this.unitY,
+                doZoom = false,
+                dir, actPos;
+
+            if (!this.attr.keyboard.enabled || id_node === '') {
+                return false;
+            }
+
+            // Get the JSXGraph id from the id of the SVG node.
+            id = id_node.replace(this.containerObj.id + '_', '');
+            el = this.select(id);
+
+            if (Type.exists(el.coords)) {
+                actPos = el.coords.usrCoords.slice(1);
+            }
+
+            if (Type.evaluate(this.attr.keyboard.panshift) || Type.evaluate(this.attr.keyboard.panctrl)) {
+                doZoom = true;
+            }
+
+            if ((Type.evaluate(this.attr.keyboard.panshift) && evt.shiftKey) ||
+                (Type.evaluate(this.attr.keyboard.panctrl) && evt.ctrlKey)) {
+                if (evt.keyCode === 38) {           // up
+                    this.clickUpArrow();
+                } else if (evt.keyCode === 40) {    // down
+                    this.clickDownArrow();
+                } else if (evt.keyCode === 37) {    // left
+                    this.clickLeftArrow();
+                } else if (evt.keyCode === 39) {    // right
+                    this.clickRightArrow();
+                }
+            } else {
+                // Adapt dx, dy to snapToGrid and attractToGrid
+                // snapToGrid has priority.
+                if (Type.exists(el.visProp)) {
+                    if (Type.exists(el.visProp.snaptogrid) &&
+                        el.visProp.snaptogrid &&
+                        Type.evaluate(el.visProp.snapsizex) &&
+                        Type.evaluate(el.visProp.snapsizey)) {
+
+                        // Adapt dx, dy such that snapToGrid is possible
+                        res = el.getSnapSizes();
+                        sX = res[0];
+                        sY = res[1];
+                        dx = Math.max(sX, dx);
+                        dy = Math.max(sY, dy);
+
+                    } else if (Type.exists(el.visProp.attracttogrid) &&
+                        el.visProp.attracttogrid &&
+                        Type.evaluate(el.visProp.attractordistance) &&
+                        Type.evaluate(el.visProp.attractorunit)) {
+
+                        // Adapt dx, dy such that attractToGrid is possible
+                        sX = 1.1 * Type.evaluate(el.visProp.attractordistance);
+                        sY = sX;
+
+                        if (Type.evaluate(el.visProp.attractorunit) === 'screen') {
+                            sX /= this.unitX;
+                            sY /= this.unitX;
+                        }
+                        dx = Math.max(sX, dx);
+                        dy = Math.max(sY, dy);
+                    }
+
+                }
+
+                if (evt.keyCode === 38) {           // up
+                    dir = [0, dy];
+                } else if (evt.keyCode === 40) {    // down
+                    dir = [0, -dy];
+                } else if (evt.keyCode === 37) {    // left
+                    dir = [-dx, 0];
+                } else if (evt.keyCode === 39) {    // right
+                    dir = [dx, 0];
+                // } else if (evt.keyCode === 9) {  // tab
+
+                } else if (doZoom && evt.key === '+') {   // +
+                    this.zoomIn();
+                } else if (doZoom && evt.key === '-') {   // -
+                    this.zoomOut();
+                } else if (doZoom && evt.key === 'o') {   // o
+                    this.zoom100();
+                }
+                if (dir && el.isDraggable &&
+                        el.visPropCalc.visible &&
+                        ((this.geonextCompatibilityMode &&
+                            (Type.isPoint(el) ||
+                            el.elementClass === Const.OBJECT_CLASS_TEXT)
+                        ) || !this.geonextCompatibilityMode) &&
+                        !Type.evaluate(el.visProp.fixed)
+                    ) {
+
+                    if (Type.exists(el.coords)) {
+                        dir[0] += actPos[0];
+                        dir[1] += actPos[1];
+                    }
+                    // For coordsElement setPosition has to call setPositionDirectly.
+                    // Otherwise the position is set by a translation.
+                    el.setPosition(JXG.COORDS_BY_USER, dir);
+                    if (Type.exists(el.coords)) {
+                        this.updateInfobox(el);
+                    }
+                    this.triggerEventHandlers(['hit'], [evt, el]);
+                }
+            }
+
+            this.update();
+
+            return true;
+        },
+
+        /**
+         * Event listener for SVG elements getting focus.
+         * This is needed for highlighting when using keyboard control.
+         *
+         * @see JXG.Board#keyFocusOutListener
+         * @see JXG.Board#keyDownListener
+         * @see JXG.Board#keyboard
+         *
+         * @param  {Event} evt The browser's event object
+         */
+        keyFocusInListener: function (evt) {
+            var id_node = evt.target.id,
+                id, el;
+
+            if (!this.attr.keyboard.enabled || id_node === '') {
+                return false;
+            }
+
+            id = id_node.replace(this.containerObj.id + '_', '');
+            el = this.select(id);
+            if (Type.exists(el.highlight)) {
+                el.highlight(true);
+            }
+            if (Type.exists(el.coords)) {
+                this.updateInfobox(el);
+            }
+            this.triggerEventHandlers(['hit'], [evt, el]);
+        },
+
+        /**
+         * Event listener for SVG elements losing focus.
+         * This is needed for dehighlighting when using keyboard control.
+         *
+         * @see JXG.Board#keyFocusInListener
+         * @see JXG.Board#keyDownListener
+         * @see JXG.Board#keyboard
+         *
+         * @param  {Event} evt The browser's event object
+         */
+        keyFocusOutListener: function (evt) {
+            if (!this.attr.keyboard.enabled) {
+                return false;
+            }
+            // var id_node = evt.target.id,
+            //     id, el;
+
+            // id = id_node.replace(this.containerObj.id + '_', '');
+            // el = this.select(id);
+            this.dehighlightAll();
+            this.displayInfobox(false);
+        },
+
+        /**
+         * Update the width and height of the JSXGraph container div element.
+         * Read actual values with getBoundingClientRect(),
+         * and call board.resizeContainer() with this values.
+         * <p>
+         * If necessary, also call setBoundingBox().
+         *
+         * @see JXG.Board#startResizeObserver
+         * @see JXG.Board#resizeListener
+         * @see JXG.Board#resizeContainer
+         * @see JXG.Board#setBoundingBox
+         *
+         */
+        updateContainerDims: function() {
+            var w, h,
+                bb, css;
+
+            // Get size of the board's container div
+            bb = this.containerObj.getBoundingClientRect();
+            w = bb.width;
+            h = bb.height;
+
+            // Subtract the border size
+            if (window && window.getComputedStyle) {
+                css = window.getComputedStyle(this.containerObj, null);
+                w -= parseFloat(css.getPropertyValue('border-left-width')) + parseFloat(css.getPropertyValue('border-right-width'));
+                h -= parseFloat(css.getPropertyValue('border-top-width'))  + parseFloat(css.getPropertyValue('border-bottom-width'));
+            }
+
+            // If div is invisible - do nothing
+            if (w <= 0 || h <= 0) {
+                return;
+            }
+
+            // If bounding box is not yet initialized, do it now.
+            if (isNaN(this.getBoundingBox()[0])) {
+                this.setBoundingBox(this.attr.boundingbox, this.keepaspectratio, 'keep');
+            }
+
+            // Do nothing if the dimension did not change since being visible
+            // the last time. Note that if the div had display:none in the mean time,
+            // we did not store this._prevDim.
+            if (Type.exists(this._prevDim) &&
+                this._prevDim.w === w && this._prevDim.h === h) {
+                    return;
+            }
+
+            // Set the size of the SVG or canvas element
+            this.resizeContainer(w, h, true);
+            this._prevDim = {
+                w: w,
+                h: h
+            };
+        },
+
+        /**
+         * Start observer which reacts to size changes of the JSXGraph
+         * container div element. Calls updateContainerDims().
+         * If not available, an event listener for the window-resize event is started.
+         * On mobile devices also scrolling might trigger resizes.
+         * However, resize events triggered by scrolling events should be ignored.
+         * Therefore, also a scrollListener is started.
+         * Resize can be controlled with the board attribute resize.
+         *
+         * @see JXG.Board#updateContainerDims
+         * @see JXG.Board#resizeListener
+         * @see JXG.Board#scrollListener
+         * @see JXG.Board#resize
+         *
+         */
+        startResizeObserver: function() {
+            var that = this;
+
+            if (!Env.isBrowser || !this.attr.resize || !this.attr.resize.enabled) {
+                return;
+            }
+
+            this.resizeObserver = new ResizeObserver(function(entries) {
+                if (!that._isResizing) {
+                    that._isResizing = true;
+                    window.setTimeout(function() {
+                        try {
+                            that.updateContainerDims();
+                        } catch (err) {
+                            that.stopResizeObserver();
+                        } finally {
+                            that._isResizing = false;
+                        }
+                    }, that.attr.resize.throttle);
+                }
+            });
+            this.resizeObserver.observe(this.containerObj);
+        },
+
+        /**
+         * Stops the resize observer.
+         * @see JXG.Board#startResizeObserver
+         *
+         */
+        stopResizeObserver: function() {
+            if (!Env.isBrowser || !this.attr.resize || !this.attr.resize.enabled) {
+                return;
+            }
+
+            if (Type.exists(this.resizeObserver)) {
+                this.resizeObserver.unobserve(this.containerObj);
+            }
+        },
+
+        /**
+         * Fallback solutions if there is no resizeObserver available in the browser.
+         * Reacts to resize events of the window (only). Otherwise similar to
+         * startResizeObserver(). To handle changes of the visibility
+         * of the JSXGraph container element, additionally an intersection observer is used.
+         * which watches changes in the visibility of the JSXGraph container element.
+         * This is necessary e.g. for register tabs or dia shows.
+         *
+         * @see JXG.Board#startResizeObserver
+         * @see JXG.Board#startIntersectionObserver
+         */
+        resizeListener: function() {
+            var that = this;
+
+            if (!Env.isBrowser || !this.attr.resize || !this.attr.resize.enabled) {
+                return;
+            }
+            if (!this._isScrolling && !this._isResizing) {
+                this._isResizing = true;
+                window.setTimeout(function() {
+                    that.updateContainerDims();
+                    that._isResizing = false;
+                }, this.attr.resize.throttle);
+            }
+        },
+
+        /**
+         * Listener to watch for scroll events. Sets board._isScrolling = true
+         * @param  {Event} evt The browser's event object
+         *
+         * @see JXG.Board#startResizeObserver
+         * @see JXG.Board#resizeListener
+         *
+         */
+        scrollListener: function(evt) {
+            var that = this;
+
+            if (!Env.isBrowser) {
+                return;
+            }
+            if (!this._isScrolling) {
+                this._isScrolling = true;
+                window.setTimeout(function() {
+                    that._isScrolling = false;
+                }, 66);
+            }
+        },
+
+        /**
+         * Watch for changes of the visibility of the JSXGraph container element.
+         *
+         * @see JXG.Board#startResizeObserver
+         * @see JXG.Board#resizeListener
+         *
+         */
+        startIntersectionObserver: function() {
+            var that = this,
+                options = {
+                    root: null,
+                    rootMargin: '0px',
+                    threshold: 0.8
+                };
+
+            try {
+                this.intersectionObserver = new IntersectionObserver(function(entries) {
+                    // If bounding box is not yet initialized, do it now.
+                    if (isNaN(that.getBoundingBox()[0])) {
+                        that.updateContainerDims();
+                    }
+                }, options);
+                this.intersectionObserver.observe(that.containerObj);
+            } catch (err) {
+                console.log('JSXGraph: IntersectionObserver not available in this browser.');
+            }
+        },
+
+        /**
+         * Stop the intersection observer
+         *
+         * @see JXG.Board#startIntersectionObserver
+         *
+         */
+        stopIntersectionObserver: function() {
+            if (Type.exists(this.intersectionObserver)) {
+                this.intersectionObserver.unobserve(this.containerObj);
+            }
+        },
+
         /**********************************************************
          *
          * End of Event Handlers
@@ -3026,7 +3513,7 @@ define([
              * Infobox close to points in which the points' coordinates are displayed.
              * This is simply a JXG.Text element. Access through board.infobox.
              * Uses CSS class .JXGinfobox.
-             * @type {JXG.Text}
+             * @type JXG.Text
              *
              */
             this.infobox = this.create('text', [0, 0, '0,0'], attr);
@@ -3102,7 +3589,7 @@ define([
          *
          */
         displayInfobox: function(val) {
-            if (this.infobox.hiddenByParent == val) {
+            if (this.infobox.hiddenByParent === val) {
                 this.infobox.hiddenByParent = !val;
                 this.infobox.prepareUpdate().updateVisibility(val).updateRenderer();
             }
@@ -3218,11 +3705,11 @@ define([
          *                 // Shorter version:
          *                 //somePoint = board.create('point', a, {name:'SomePoint',size:4});
          *             });
-         * 
+         *
          *     })();
-         * 
+         *
          * </script><pre>
-         * 
+         *
          * @see JXG.Board#getScrCoordsOfMouse
          * @see JXG.Board#getAllUnderMouse
          */
@@ -3344,7 +3831,7 @@ define([
         addConditions: function (str) {
             var term, m, left, right, name, el, property,
                 functions = [],
-                plaintext = 'var el, x, y, c, rgbo;\n',
+                // plaintext = 'var el, x, y, c, rgbo;\n',
                 i = str.indexOf('<data>'),
                 j = str.indexOf('<' + '/data>'),
 
@@ -3428,7 +3915,7 @@ define([
                 if (!Type.exists(this.elementsByName[name])) {
                     JXG.debug("debug conditions: |" + name + "| undefined");
                 } else {
-                    plaintext += "el = this.objects[\"" + el.id + "\"];\n";
+                    // plaintext += "el = this.objects[\"" + el.id + "\"];\n";
 
                     switch (property) {
                     case 'x':
@@ -3555,9 +4042,7 @@ define([
                 tr = (bb[1] - y) / (bb[1] - bb[3]);
             }
 
-            this.setBoundingBox([bb[0] + dX * lr, bb[1] - dY * tr, bb[2] - dX * (1 - lr), bb[3] + dY * (1 - tr)], false);
-            this.zoomX *= zX;
-            this.zoomY *= zY;
+            this.setBoundingBox([bb[0] + dX * lr, bb[1] - dY * tr, bb[2] - dX * (1 - lr), bb[3] + dY * (1 - tr)], this.keepaspectratio, 'update');
             return this.applyZoom();
         },
 
@@ -3588,25 +4073,32 @@ define([
                 tr = (bb[1] - y) / (bb[1] - bb[3]);
             }
 
-            this.setBoundingBox([bb[0] + dX * lr, bb[1] - dY * tr, bb[2] - dX * (1 - lr), bb[3] + dY * (1 - tr)], false);
-            this.zoomX /= zX;
-            this.zoomY /= zY;
+            this.setBoundingBox([bb[0] + dX * lr, bb[1] - dY * tr, bb[2] - dX * (1 - lr), bb[3] + dY * (1 - tr)], this.keepaspectratio, 'update');
 
             return this.applyZoom();
         },
 
         /**
-         * Resets zoom factor to 100%.
+         * Reset the zoom level to the original zoom level from initBoard();
+         * Additionally, if the board as been initialized with a boundingBox (which is the default),
+         * restore the viewport to the original viewport during initialization. Otherwise,
+         * (i.e. if the board as been initialized with unitX/Y and originX/Y),
+         * just set the zoom level to 100%.
+         *
          * @returns {JXG.Board} Reference to the board
          */
         zoom100: function () {
-            var bb = this.getBoundingBox(),
-                dX = (bb[2] - bb[0]) * (1.0 - this.zoomX) * 0.5,
-                dY = (bb[1] - bb[3]) * (1.0 - this.zoomY) * 0.5;
+            var bb, dX, dY;
 
-            this.setBoundingBox([bb[0] + dX, bb[1] - dY, bb[2] - dX, bb[3] + dY], false);
-            this.zoomX = 1.0;
-            this.zoomY = 1.0;
+            if (Type.exists(this.attr.boundingbox)) {
+                this.setBoundingBox(this.attr.boundingbox, this.keepaspectratio, 'reset');
+            } else {
+                // Board has been set up with unitX/Y and originX/Y
+                bb = this.getBoundingBox();
+                dX = (bb[2] - bb[0]) * (1.0 - this.zoomX) * 0.5;
+                dY = (bb[1] - bb[3]) * (1.0 - this.zoomY) * 0.5;
+                this.setBoundingBox([bb[0] + dX, bb[1] - dY, bb[2] - dX, bb[3] + dY], this.keepaspectratio, 'reset');
+            }
             return this.applyZoom();
         },
 
@@ -3643,10 +4135,7 @@ define([
             borderX = border / this.unitX;
             borderY = border / this.unitY;
 
-            this.zoomX = 1.0;
-            this.zoomY = 1.0;
-
-            this.setBoundingBox([minX - borderX, maxY + borderY, maxX + borderX, minY - borderY], true);
+            this.setBoundingBox([minX - borderX, maxY + borderY, maxX + borderX, minY - borderY], this.keepaspectratio, 'update');
 
             return this.applyZoom();
         },
@@ -3679,53 +4168,12 @@ define([
             }
 
             if (Type.isArray(newBBox)) {
-                this.zoomX = 1.0;
-                this.zoomY = 1.0;
                 cx = 0.5 * (newBBox[0] + newBBox[2]);
                 cy = 0.5 * (newBBox[1] + newBBox[3]);
                 dx = 1.5 * (newBBox[2] - newBBox[0]) * 0.5;
                 dy = 1.5 * (newBBox[1] - newBBox[3]) * 0.5;
                 d = Math.max(dx, dy);
-                this.setBoundingBox([cx - d, cy + d, cx + d, cy - d], true);
-            }
-
-            return this;
-        },
-
-        zoomElementsOld: function (elements) {
-            var i, j, e, box,
-                newBBox = [0, 0, 0, 0],
-                dir = [1, -1, -1, 1];
-
-            if (!Type.isArray(elements) || elements.length === 0) {
-                return this;
-            }
-
-            for (i = 0; i < elements.length; i++) {
-                e = this.select(elements[i]);
-
-                box = e.bounds();
-                if (Type.isArray(box)) {
-                    if (Type.isArray(newBBox)) {
-                        for (j = 0; j < 4; j++) {
-                            if (dir[j] * box[j] < dir[j] * newBBox[j]) {
-                                newBBox[j] = box[j];
-                            }
-                        }
-                    } else {
-                        newBBox = box;
-                    }
-                }
-            }
-
-            if (Type.isArray(newBBox)) {
-                for (j = 0; j < 4; j++) {
-                    newBBox[j] -= dir[j];
-                }
-
-                this.zoomX = 1.0;
-                this.zoomY = 1.0;
-                this.setBoundingBox(newBBox, true);
+                this.setBoundingBox([cx - d, cy + d, cx + d, cy - d], this.keepaspectratio, 'update');
             }
 
             return this;
@@ -3943,22 +4391,46 @@ define([
          */
         resizeContainer: function (canvasWidth, canvasHeight, dontset, dontSetBoundingBox) {
             var box;
+                // w, h, cx, cy;
+                // box_act,
+                // shift_x = 0,
+                // shift_y = 0;
 
             if (!dontSetBoundingBox) {
-                box = this.getBoundingBox();
+                // box_act = this.getBoundingBox();    // This is the actual bounding box.
+                box = this.getBoundingBox();    // This is the actual bounding box.
             }
-            this.canvasWidth = parseInt(canvasWidth, 10);
-            this.canvasHeight = parseInt(canvasHeight, 10);
+
+            this.canvasWidth = parseFloat(canvasWidth);
+            this.canvasHeight = parseFloat(canvasHeight);
+
+            // if (!dontSetBoundingBox) {
+            //     box     = this.attr.boundingbox;    // This is the intended bounding box.
+
+            //     // The shift values compensate the follow-up correction
+            //     // in setBoundingBox in case of "this.keepaspectratio==true"
+            //     // Otherwise, shift_x and shift_y will be zero.
+            //     // Obsolet since setBoundingBox centers in case of "this.keepaspectratio==true".
+            //     // shift_x = box_act[0] - box[0] / this.zoomX;
+            //     // shift_y = box_act[1] - box[1] / this.zoomY;
+
+            //     cx = (box[2] + box[0]) * 0.5; // + shift_x;
+            //     cy = (box[3] + box[1]) * 0.5; // + shift_y;
+
+            //     w = (box[2] - box[0]) * 0.5 / this.zoomX;
+            //     h = (box[1] - box[3]) * 0.5 / this.zoomY;
+
+            //     box = [cx - w, cy + h, cx + w, cy - h];
+            // }
 
             if (!dontset) {
                 this.containerObj.style.width = (this.canvasWidth) + 'px';
                 this.containerObj.style.height = (this.canvasHeight) + 'px';
             }
-
             this.renderer.resize(this.canvasWidth, this.canvasHeight);
 
             if (!dontSetBoundingBox) {
-                this.setBoundingBox(box, this.keepaspectratio);
+                this.setBoundingBox(box, this.keepaspectratio, 'keep');
             }
 
             return this;
@@ -4065,13 +4537,13 @@ define([
 
             for (el = 0; el < this.objectsList.length; el++) {
                 pEl = this.objectsList[el];
-                if (this.needsFullUpdate && pEl.elementClass == Const.OBJECT_CLASS_TEXT) {
+                if (this.needsFullUpdate && pEl.elementClass === Const.OBJECT_CLASS_TEXT) {
                     pEl.updateSize();
                 }
 
                 // For updates of an element we distinguish if the dragged element is updated or
                 // other elements are updated.
-                // The difference lies in the treatment of gliders.
+                // The difference lies in the treatment of gliders and points based on transformations.
                 pEl.update(!Type.exists(drag) || pEl.id !== drag.id)
                    .updateVisibility();
             }
@@ -4252,7 +4724,8 @@ define([
          * @returns {JXG.Board} Reference to the board
          */
         update: function (drag) {
-            var i, len, b, insert;
+            var i, len, b, insert,
+                storeActiveEl;
 
             if (this.inUpdate || this.isSuspendedUpdate) {
                 return this;
@@ -4260,12 +4733,15 @@ define([
             this.inUpdate = true;
 
             if (this.attr.minimizereflow === 'all' && this.containerObj && this.renderer.type !== 'vml') {
+                storeActiveEl = document.activeElement; // Store focus element
                 insert = this.renderer.removeToInsertLater(this.containerObj);
             }
 
             if (this.attr.minimizereflow === 'svg' && this.renderer.type === 'svg') {
+                storeActiveEl = document.activeElement;
                 insert = this.renderer.removeToInsertLater(this.renderer.svgRoot);
             }
+
             this.prepareUpdate().updateElements(drag).updateConditions();
             this.renderer.suspendRedraw(this);
             this.updateRenderer();
@@ -4274,6 +4750,7 @@ define([
 
             if (insert) {
                 insert();
+                storeActiveEl.focus();     // Restore focus element
             }
 
             // To resolve dependencies between boards
@@ -4440,15 +4917,21 @@ define([
          * @param {Array} bbox New bounding box [x1,y1,x2,y2]
          * @param {Boolean} [keepaspectratio=false] If set to true, the aspect ratio will be 1:1, but
          * the resulting viewport may be larger.
+         * @param {String} [setZoom='reset'] Reset, keep or update the zoom level of the board. 'reset'
+         * sets {@link JXG.Board#zoomX} and {@link JXG.Board#zoomY} to the start values (or 1.0).
+         * 'update' adapts these values accoring to the new bounding box and 'keep' does nothing.
          * @returns {JXG.Board} Reference to the board
          */
-        setBoundingBox: function (bbox, keepaspectratio) {
-            var h, w,
+        setBoundingBox: function (bbox, keepaspectratio, setZoom) {
+            var h, w, ux, uy,
+                offX = 0,
+                offY = 0,
                 dim = Env.getDimensions(this.container, this.document);
 
             if (!Type.isArray(bbox)) {
                 return this;
             }
+
             if (bbox[0] < this.maxboundingbox[0] ||
                 bbox[1] > this.maxboundingbox[1] ||
                 bbox[2] > this.maxboundingbox[2] ||
@@ -4456,20 +4939,28 @@ define([
                 return this;
             }
 
-            this.plainBB = bbox;
+            if (!Type.exists(setZoom)) {
+                setZoom = 'reset';
+            }
+
+            ux = this.unitX;
+            uy = this.unitY;
 
             this.canvasWidth = parseInt(dim.width, 10);
             this.canvasHeight = parseInt(dim.height, 10);
             w = this.canvasWidth;
             h = this.canvasHeight;
-
             if (keepaspectratio) {
                 this.unitX = w / (bbox[2] - bbox[0]);
                 this.unitY = h / (bbox[1] - bbox[3]);
                 if (Math.abs(this.unitX) < Math.abs(this.unitY)) {
                     this.unitY = Math.abs(this.unitX) * this.unitY / Math.abs(this.unitY);
+                    // Add the additional units in equal portions above and below
+                    offY = (h / this.unitY - (bbox[1] - bbox[3])) * 0.5;
                 } else {
                     this.unitX = Math.abs(this.unitY) * this.unitX / Math.abs(this.unitX);
+                    // Add the additional units in equal portions left and right
+                    offX = (w / this.unitX - (bbox[2] - bbox[0])) * 0.5;
                 }
                 this.keepaspectratio = true;
             } else {
@@ -4478,7 +4969,15 @@ define([
                 this.keepaspectratio = false;
             }
 
-            this.moveOrigin(-this.unitX * bbox[0], this.unitY * bbox[1]);
+            this.moveOrigin(-this.unitX * (bbox[0] - offX), this.unitY * (bbox[1] + offY));
+
+            if (setZoom === 'update') {
+                this.zoomX *= this.unitX / ux;
+                this.zoomY *= this.unitY / uy;
+            } else if (setZoom === 'reset') {
+                this.zoomX = Type.exists(this.attr.zoomx) ? this.attr.zoomx : 1.0;
+                this.zoomY = Type.exists(this.attr.zoomy) ? this.attr.zoomy : 1.0;
+            }
 
             return this;
         },
@@ -4803,7 +5302,7 @@ define([
                 for (i = 0; i < l; i++) {
                     olist[flist[i].id] = flist[i];
                 }
-                s = new EComposition(olist);
+                s = new Composition(olist);
             // it's an element which has been deleted (and still hangs around, e.g. in an attractor list
             } else if (Type.isObject(s) && Type.exists(s.id) && !Type.exists(this.objects[s.id])) {
                 s = null;
@@ -5150,7 +5649,7 @@ define([
          * @name JXG.Board#move
          * @param {Event} e The browser's event object.
          * @param {Number} mode The mode the board currently is in
-         * @see {JXG.Board#mode}
+         * @see JXG.Board#mode
          */
         __evt__move: function (e, mode) { },
 
@@ -5160,7 +5659,7 @@ define([
          * @name JXG.Board#mousemove
          * @param {Event} e The browser's event object.
          * @param {Number} mode The mode the board currently is in
-         * @see {JXG.Board#mode}
+         * @see JXG.Board#mode
          */
         __evt__mousemove: function (e, mode) { },
 
@@ -5170,7 +5669,7 @@ define([
          * @name JXG.Board#penmove
          * @param {Event} e The browser's event object.
          * @param {Number} mode The mode the board currently is in
-         * @see {JXG.Board#mode}
+         * @see JXG.Board#mode
          */
         __evt__penmove: function (e, mode) { },
 
@@ -5181,7 +5680,7 @@ define([
          * @name JXG.Board#pointermove
          * @param {Event} e The browser's event object.
          * @param {Number} mode The mode the board currently is in
-         * @see {JXG.Board#mode}
+         * @see JXG.Board#mode
          */
         __evt__pointermove: function (e, mode) { },
 
@@ -5191,7 +5690,7 @@ define([
          * @name JXG.Board#touchmove
          * @param {Event} e The browser's event object.
          * @param {Number} mode The mode the board currently is in
-         * @see {JXG.Board#mode}
+         * @see JXG.Board#mode
          */
         __evt__touchmove: function (e, mode) { },
 
@@ -5361,6 +5860,12 @@ define([
          * <p>
          * The wrapping div has the CSS class 'jxgbox_wrap_private' which is
          * defined in the file 'jsxgraph.css'
+         * <p>
+         * This feature is not available on iPhones (as of December 2021).
+         *
+         * @param {String} id (Optional) id of the div element which is brought to fullscreen.
+         * If not provided, this defaults to the JSXGraph div. However, it may be necessary for the aspect ratio trick
+         * which using padding-bottom/top and an out div element. Then, the id of the outer div has to be supplied.
          *
          * @return {JXG.Board} Reference to the board
          *
@@ -5382,29 +5887,76 @@ define([
          *         var p = board.create('point', [0, 1]);
          *         board_d5bab8b6 = board;
          *     })();
-         * <button onClick="board_d5bab8b6.toFullscreen()">Fullscreen</button>
-         *
          * </script>
+         * <button onClick="board_d5bab8b6.toFullscreen()">Fullscreen</button>
          * <pre>
          *
+         * @example
+         * &lt;div id='outer' style='max-width: 500px; margin: 0 auto;'&gt;
+         * &lt;div id='jxgbox' class='jxgbox' style='height: 0; padding-bottom: 100%'&gt;&lt;/div&gt;
+         * &lt;/div&gt;
+         * &lt;button onClick="board.toFullscreen('outer')"&gt;Fullscreen&lt;/button&gt;
+         *
+         * &lt;script language="Javascript" type='text/javascript'&gt;
+         * var board = JXG.JSXGraph.initBoard('jxgbox', {
+         *     axis:true,
+         *     boundingbox:[-5,5,5,-5],
+         *     fullscreen: { id: 'outer' },
+         *     showFullscreen: true
+         * });
+         * var p = board.create('point', [-2, 3], {});
+         * &lt;/script&gt;
+         *
+         * </pre><div id="JXG7103f6b_outer" style='max-width: 500px; margin: 0 auto;'>
+         * <div id="JXG7103f6be-6993-4ff8-8133-c78e50a8afac" class="jxgbox" style="height: 0; padding-bottom: 100%;"></div>
+         * </div>
+         * <button onClick="board_JXG7103f6be.toFullscreen('JXG7103f6b_outer')">Fullscreen</button>
+         * <script type="text/javascript">
+         *     var board_JXG7103f6be;
+         *     (function() {
+         *         var board = JXG.JSXGraph.initBoard('JXG7103f6be-6993-4ff8-8133-c78e50a8afac',
+         *             {boundingbox: [-8, 8, 8,-8], axis: true, fullscreen: { id: 'JXG7103f6b_outer' }, showFullscreen: true,
+         *              showcopyright: false, shownavigation: false});
+         *     var p = board.create('point', [-2, 3], {});
+         *     board_JXG7103f6be = board;
+         *     })();
+         *
+         * </script><pre>
+         *
+         *
          */
-        toFullscreen: function() {
-            var id = this.container,
-                wrap_id = 'fullscreenwrap_' + id,
-                wrapper = document.createElement('div'),
-                el;
+        toFullscreen: function (id) {
+            var wrap_id, wrap_node, inner_node;
 
-            // If necessary, wrap a div around the JSXGraph div.
-            if (!this.document.getElementById(wrap_id)) {
-                wrapper.classList.add('JXG_wrap_private');
-                wrapper.setAttribute('id', wrap_id);
-                el = this.containerObj;
-                el.parentNode.insertBefore(wrapper, el);
-                wrapper.appendChild(el);
+            id = id || this.container;
+            this._fullscreen_inner_id = id;
+            inner_node = document.getElementById(id);
+            wrap_id = 'fullscreenwrap_' + id;
+
+            // Wrap a div around the JSXGraph div.
+            if (this.document.getElementById(wrap_id)) {
+                wrap_node = this.document.getElementById(wrap_id);
+            } else {
+                wrap_node = document.createElement('div');
+                wrap_node.classList.add('JXG_wrap_private');
+                wrap_node.setAttribute('id', wrap_id);
+                inner_node.parentNode.insertBefore(wrap_node, inner_node);
+                wrap_node.appendChild(inner_node);
             }
 
-            // Start fullscreen mode
-            Env.toFullscreen(wrap_id, id);
+            // Get the real width and height of the JSXGraph div
+            // and determine the scaling and vertical shift amount
+            this._fullscreen_res = Env._getScaleFactors(inner_node);
+
+            // Trigger fullscreen mode
+            wrap_node.requestFullscreen = wrap_node.requestFullscreen ||
+                wrap_node.webkitRequestFullscreen ||
+                wrap_node.mozRequestFullScreen ||
+                wrap_node.msRequestFullscreen;
+
+            if (wrap_node.requestFullscreen) {
+                wrap_node.requestFullscreen();
+            }
 
             return this;
         },
@@ -5414,21 +5966,71 @@ define([
          * which are applied to the JSXGraph canvas have to be reread.
          * Otherwise the position of upper left corner is wrongly interpreted.
          *
-         * @param  {Object} evt fullscreen event object
+         * @param  {Object} evt fullscreen event object (unused)
          */
-        fullscreenListener: function(evt) {
-            var el = this.containerObj;
+        fullscreenListener: function (evt) {
+            var res, inner_id, inner_node;
 
+            inner_id = this._fullscreen_inner_id;
+            if (!Type.exists(inner_id)) {
+                return;
+            }
+
+            document.fullscreenElement = document.fullscreenElement ||
+                    document.webkitFullscreenElement ||
+                    document.mozFullscreenElement ||
+                    document.msFullscreenElement;
+
+            inner_node = document.getElementById(inner_id);
             // If full screen mode is started we have to remove CSS margin around the JSXGraph div.
             // Otherwise, the positioning of the fullscreen div will be false.
             // When leaving the fullscreen mode, the margin is put back in.
+            if (document.fullscreenElement) {
+                // Just entered fullscreen mode
 
-            if (Type.exists(this._cssFullscreenStore) && this._cssFullscreenStore.isFullscreen) {
-                el._cssFullscreenStore.isFullscreen = false;
-                el.style.margin = this._cssFullscreenStore.margin;
-            } else {
-                el._cssFullscreenStore.isFullscreen = true;
-                el.style.margin = '';
+                // Get the data computed in board.toFullscreen()
+                res = this._fullscreen_res;
+
+                // Store the scaling data.
+                // It is used in AbstractRenderer.updateText to restore the scaling matrix
+                // which is removed by MathJax.
+                // Further, the CSS margin has to be removed when in fullscreen mode,
+                // and must be restored later.
+                inner_node._cssFullscreenStore = {
+                    id: document.fullscreenElement.id,
+                    isFullscreen: true,
+                    margin: inner_node.style.margin,
+                    width: inner_node.style.width,
+                    scale: res.scale,
+                    vshift: res.vshift
+                };
+
+                inner_node.style.margin = '';
+                inner_node.style.width = res.width + 'px';
+
+                // Do the shifting and scaling via CSS pseudo rules
+                // We do this after fullscreen mode has been established to get the correct size
+                // of the JSXGraph div.
+                Env.scaleJSXGraphDiv(document.fullscreenElement.id, inner_id, res.scale, res.vshift);
+
+                // Clear document.fullscreenElement, because Safari doesn't to it and
+                // when leaving full screen mode it is still set.
+                document.fullscreenElement = null;
+
+            } else if (Type.exists(inner_node._cssFullscreenStore)) {
+                // Just left the fullscreen mode
+
+                // Remove the CSS rules added in Env.scaleJSXGraphDiv
+                try {
+                    document.styleSheets[document.styleSheets.length - 1].deleteRule(0);
+                } catch (err) {
+                    console.log('JSXGraph: Could not remove CSS rules for full screen mode');
+                }
+
+                inner_node._cssFullscreenStore.isFullscreen = false;
+                inner_node.style.margin = inner_node._cssFullscreenStore.margin;
+                inner_node.style.width = inner_node._cssFullscreenStore.width;
+
             }
 
             this.updateCSSTransforms();

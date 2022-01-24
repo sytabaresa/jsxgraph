@@ -39,7 +39,6 @@
  base/coords
  base/element
  math/math
- math/statistics
  utils/type
  */
 
@@ -55,8 +54,6 @@ define([
 
     /**
      * Construct and handle images
-     * The coordinates can be relative to the coordinates of an element
-     * given in {@link JXG.Options#text.anchor}.
      *
      * The image can be supplied as an URL or an base64 encoded inline image
      * like "data:image/png;base64, /9j/4AAQSkZJRgA..." or a function returning
@@ -66,8 +63,8 @@ define([
      * type {@link Image} instead.
      * @augments JXG.GeometryElement
      * @augments JXG.CoordsElement
-     * @param {string|JXG.Board} board The board the new text is drawn on.
-     * @param {Array} coordinates An array with the user coordinates of the text.
+     * @param {string|JXG.Board} board The board the new image is drawn on.
+     * @param {Array} coordinates An array with the user coordinates of the image.
      * @param {Object} attributes An object containing visual and - optionally - a name and an id.
      * @param {string|function} url An URL string or a function returning an URL string.
      * @param  {Array} size Array containing width and height of the image in user coordinates.
@@ -85,13 +82,13 @@ define([
 
         /**
          * Array of length two containing [width, height] of the image in pixel.
-         * @type {array}
+         * @type array
          */
         this.size = [Math.abs(this.usrSize[0] * board.unitX), Math.abs(this.usrSize[1] * board.unitY)];
 
         /**
          * 'href' of the image. This might be an URL, but also a data-uri is allowed.
-         * @type {string}
+         * @type string
          */
         this.url = url;
 
@@ -269,7 +266,7 @@ define([
             return this;
         },
 
-        // documented in element.js
+        // Documented in element.js
         getParents: function () {
             var p = [this.url, [this.Z(), this.X(), this.Y()], this.usrSize];
 
@@ -291,7 +288,7 @@ define([
          * @returns {JXG.GeometryElement} A reference to the element
          *
          * @example
-         * var im = board.create('image', ['http://jsxgraph.uni-bayreuth.de/distrib/images/uccellino.jpg',
+         * var im = board.create('image', ['https://jsxgraph.org/distrib/images/uccellino.jpg',
          *                                [-3,-2], [3,3]]);
          * im.setSize(4, 4);
          * board.update();
@@ -301,7 +298,7 @@ define([
          *     (function() {
          *         var board = JXG.JSXGraph.initBoard('JXG8411e60c-f009-11e5-b1bf-901b0e1b8723',
          *             {boundingbox: [-8, 8, 8,-8], axis: true, showcopyright: false, shownavigation: false});
-         *     var im = board.create('image', ['http://jsxgraph.uni-bayreuth.de/distrib/images/uccellino.jpg', [-3,-2],    [3,3]]);
+         *     var im = board.create('image', ['https://jsxgraph.org/distrib/images/uccellino.jpg', [-3,-2],    [3,3]]);
          *     //im.setSize(4, 4);
          *     //board.update();
          *
@@ -311,7 +308,7 @@ define([
          *
          * @example
          * var p0 = board.create('point', [-3, -2]),
-         *     im = board.create('image', ['http://jsxgraph.uni-bayreuth.de/distrib/images/uccellino.jpg',
+         *     im = board.create('image', ['https://jsxgraph.org/distrib/images/uccellino.jpg',
          *                     [function(){ return p0.X(); }, function(){ return p0.Y(); }],
          *                     [3,3]]),
          *     p1 = board.create('point', [1, 2]);
@@ -325,7 +322,7 @@ define([
          *         var board = JXG.JSXGraph.initBoard('JXG4ce706c0-f00a-11e5-b1bf-901b0e1b8723',
          *             {boundingbox: [-8, 8, 8,-8], axis: true, showcopyright: false, shownavigation: false});
          *     var p0 = board.create('point', [-3, -2]),
-         *         im = board.create('image', ['http://jsxgraph.uni-bayreuth.de/distrib/images/uccellino.jpg',
+         *         im = board.create('image', ['https://jsxgraph.org/distrib/images/uccellino.jpg',
          *                         [function(){ return p0.X(); }, function(){ return p0.Y(); }],
          *                         [3,3]]),
          *         p1 = board.create('point', [1, 2]);
@@ -382,12 +379,12 @@ define([
      * <p>
      * The array size defines the image's width and height in user coordinates.
      * @example
-     * var im = board.create('image', ['http://jsxgraph.uni-bayreuth.de/jsxgraph/distrib/images/uccellino.jpg', [-3,-2], [3,3]]);
+     * var im = board.create('image', ['https://jsxgraph.org/jsxgraph/distrib/images/uccellino.jpg', [-3,-2], [3,3]]);
      *
      * </pre><div class="jxgbox" id="JXG9850cda0-7ea0-4750-981c-68bacf9cca57" style="width: 400px; height: 400px;"></div>
      * <script type="text/javascript">
      *   var image_board = JXG.JSXGraph.initBoard('JXG9850cda0-7ea0-4750-981c-68bacf9cca57', {boundingbox: [-4, 4, 4, -4], axis: true, showcopyright: false, shownavigation: false});
-     *   var image_im = image_board.create('image', ['http://jsxgraph.uni-bayreuth.de/distrib/images/uccellino.jpg', [-3,-2],[3,3]]);
+     *   var image_im = image_board.create('image', ['https://jsxgraph.org/distrib/images/uccellino.jpg', [-3,-2],[3,3]]);
      * </script><pre>
      */
     JXG.createImage = function (board, parents, attributes) {

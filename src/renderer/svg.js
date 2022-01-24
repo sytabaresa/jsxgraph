@@ -51,7 +51,7 @@ define([
 
     /**
      * Uses SVG to implement the rendering methods defined in {@link JXG.AbstractRenderer}.
-     * @class JXG.AbstractRenderer
+     * @class JXG.SVGRenderer
      * @augments JXG.AbstractRenderer
      * @param {Node} container Reference to a DOM node containing the board.
      * @param {Object} dim The dimensions of the board
@@ -103,6 +103,7 @@ define([
 
         this.svgRoot = this.container.ownerDocument.createElementNS(this.svgNamespace, "svg");
         this.svgRoot.style.overflow = 'hidden';
+        this.svgRoot.style.display = 'block';
 
         this.resize(dim.width, dim.height);
 
@@ -169,11 +170,12 @@ define([
             this.svgRoot.appendChild(this.layer[i]);
         }
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         this.supportsForeignObject = document.implementation.hasFeature("http://w3.org/TR/SVG11/feature#Extensibility", "1.1");
 
         if (this.supportsForeignObject) {
             this.foreignObjLayer = this.container.ownerDocument.createElementNS(this.svgNamespace, 'foreignObject');
+            this.foreignObjLayer.setAttribute("display", "none");
             this.foreignObjLayer.setAttribute("x", 0);
             this.foreignObjLayer.setAttribute("y", 0);
             this.foreignObjLayer.setAttribute("width", "100%");
@@ -208,13 +210,11 @@ define([
          * @param {String} [idAppendix=''] A string that is added to the node's id.
          * @returns {Node} Reference to the node added to the DOM.
          */
-        _createArrowHead: function (el, idAppendix) {
+        _createArrowHead: function (el, idAppendix, type) {
             var node2, node3,
                 id = el.id + 'Triangle',
-                type = null,
-                v, h,
-                ev_fa = Type.evaluate(el.visProp.firstarrow),
-                ev_la = Type.evaluate(el.visProp.lastarrow);
+                //type = null,
+                v, h;
 
             if (Type.exists(idAppendix)) {
                 id += idAppendix;
@@ -258,9 +258,10 @@ define([
             h = 5;
             if (idAppendix === 'End') {
                 // First arrow
-                if (JXG.exists(ev_fa.type)) {
-                    type = Type.evaluate(ev_fa.type);
-                }
+                //type = a.typeFirst;
+                // if (JXG.exists(ev_fa.type)) {
+                //     type = Type.evaluate(ev_fa.type);
+                // }
 
                 v = 0;
                 if (type === 2) {
@@ -279,6 +280,10 @@ define([
                     // insetRatio:0.9 tipAngle:35 wingCurve:5 tailCurve:0
                     h = 2.84;
                     node3.setAttributeNS(null, 'd', 'M 0.00,2.84 C 3.39,3.59 6.79,4.35 10.00,5.68 C 9.67,4.73 9.33,3.78 9.00,2.84 C 9.33,1.89 9.67,0.95 10.00,0.00 C 6.79,1.33 3.39,2.09 0.00,2.84');
+                } else if (type === 7) {
+                    // insetRatio:0.9 tipAngle:60 wingCurve:30 tailCurve:0
+                    h = 5.20;
+                    node3.setAttributeNS(null, 'd', 'M 0.00,5.20 C 4.04,5.20 7.99,6.92 10.00,10.39 M 10.00,0.00 C 7.99,3.47 4.04,5.20 0.00,5.20');
                 } else {
                     // type == 1 or > 6
                     node3.setAttributeNS(null, 'd', 'M 10,0 L 0,5 L 10,10 z');
@@ -290,15 +295,18 @@ define([
                         v = 3.3;
                     } else if (type === 4 || type === 5 || type === 6) {
                         v = 6.66;
+                    } else if (type === 7) {
+                        v = 0.0;
                     } else {
                         v = 10.0;
                     }
                 }
             } else {
                 // Last arrow
-                if (JXG.exists(ev_la.type)) {
-                    type = Type.evaluate(ev_la.type);
-                }
+                // if (JXG.exists(ev_la.type)) {
+                //     type = Type.evaluate(ev_la.type);
+                // }
+                //type = a.typeLast;
 
                 v = 10.0;
                 if (type === 2) {
@@ -318,6 +326,10 @@ define([
                     // insetRatio:0.9 tipAngle:35 wingCurve:5 tailCurve:0
                     h = 2.84;
                     node3.setAttributeNS(null, 'd', 'M 10.00,2.84 C 6.61,3.59 3.21,4.35 0.00,5.68 C 0.33,4.73 0.67,3.78 1.00,2.84 C 0.67,1.89 0.33,0.95 0.00,0.00 C 3.21,1.33 6.61,2.09 10.00,2.84');
+                } else if (type === 7) {
+                    // insetRatio:0.9 tipAngle:60 wingCurve:30 tailCurve:0
+                    h = 5.20;
+                    node3.setAttributeNS(null, 'd', 'M 10.00,5.20 C 5.96,5.20 2.01,6.92 0.00,10.39 M 0.00,0.00 C 2.01,3.47 5.96,5.20 10.00,5.20');
                 } else {
                     // type == 1 or > 6
                     node3.setAttributeNS(null, 'd', 'M 0,0 L 10,5 L 0,10 z');
@@ -329,10 +341,16 @@ define([
                         v = 0.02;
                     } else if (type === 4 || type === 5 || type === 6) {
                         v = 3.33;
+                    } else if (type === 7) {
+                        v = 10.0;
                     } else {
                         v = 0.05;
                     }
                 }
+            }
+            if (type === 7) {
+                node2.setAttributeNS(null, 'fill', 'none');
+                node2.setAttributeNS(null, 'stroke-width', 1);  // this is the stroke-width of the arrow head.
             }
             node2.setAttributeNS(null, 'refY', h);
             node2.setAttributeNS(null, 'refX', v);
@@ -348,15 +366,23 @@ define([
          * @param {Number} opacity
          * @param {JXG.GeometryElement} el The element the arrows are to be attached to
          */
-        _setArrowColor: function (node, color, opacity, el) {
+        _setArrowColor: function (node, color, opacity, el, type) {
             if (node) {
                 if (Type.isString(color)) {
-                    this._setAttribute(function () {
-                        node.setAttributeNS(null, 'stroke', color);
-                        node.setAttributeNS(null, 'fill', color);
-                        node.setAttributeNS(null, 'stroke-opacity', opacity);
-                        node.setAttributeNS(null, 'fill-opacity', opacity);
-                    }, el.visPropOld.fillcolor);
+                    if (type !== 7) {
+                        this._setAttribute(function () {
+                            node.setAttributeNS(null, 'stroke', color);
+                            node.setAttributeNS(null, 'fill', color);
+                            node.setAttributeNS(null, 'stroke-opacity', opacity);
+                            node.setAttributeNS(null, 'fill-opacity', opacity);
+                        }, el.visPropOld.fillcolor);
+                    } else {
+                        this._setAttribute(function () {
+                            node.setAttributeNS(null, 'fill', 'none');
+                            node.setAttributeNS(null, 'stroke', color);
+                            node.setAttributeNS(null, 'stroke-opacity', opacity);
+                        }, el.visPropOld.fillcolor);
+                    }
                 }
 
                 if (this.isIE) {
@@ -366,7 +392,7 @@ define([
 
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         _setArrowWidth: function (node, width, parentNode, size) {
             var s, d;
 
@@ -386,20 +412,6 @@ define([
                 if (this.isIE) {
                     parentNode.parentNode.insertBefore(parentNode, parentNode);
                 }
-            }
-        },
-
-        // already documented in JXG.AbstractRenderer
-        shortenPath: function(node, offFirst, offLast) {
-            var le, stroke;
-
-            if (!(offFirst === 0 && offLast === 0) && Type.exists(node.getTotalLength)) {
-                try {
-                    le = node.getTotalLength();
-                    stroke = le - offFirst - offLast;
-                    node.style.strokeDasharray = stroke + ' ' + offFirst + ' ' + stroke + ' ' + offLast;
-                    node.style.strokeDashoffset = stroke;
-                } catch (err) {}
             }
         },
 
@@ -467,7 +479,7 @@ define([
          *    Text related stuff
          * **************************/
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         displayCopyright: function (str, fontsize) {
             var node = this.createPrim('text', 'licenseText'),
                 t;
@@ -479,7 +491,7 @@ define([
             this.appendChildPrim(node, 0);
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         drawInternalText: function (el) {
             var node = this.createPrim('text', el.id);
 
@@ -495,7 +507,7 @@ define([
             return node;
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updateInternalText: function (el) {
             var content = el.plaintext, v,
                 ev_ax = el.getAnchorX(),
@@ -561,7 +573,7 @@ define([
          *    Image related stuff
          * **************************/
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         drawImage: function (el) {
             var node = this.createPrim('image', el.id);
 
@@ -572,7 +584,7 @@ define([
             this.updateImage(el);
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         transformImage: function (el, t) {
             var s, m,
                 node = el.rendNode,
@@ -587,7 +599,7 @@ define([
             }
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updateImageURL: function (el) {
             var url = Type.evaluate(el.url);
 
@@ -602,18 +614,42 @@ define([
             return false;
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updateImageStyle: function (el, doHighlight) {
             var css = Type.evaluate(doHighlight ? el.visProp.highlightcssclass : el.visProp.cssclass);
 
             el.rendNode.setAttributeNS(null, 'class', css);
         },
 
+        // Already documented in JXG.AbstractRenderer
+        drawForeignObject: function (el) {
+            el.rendNode = this.appendChildPrim(this.createPrim('foreignObject', el.id),
+                                    Type.evaluate(el.visProp.layer));
+
+            this.appendNodesToElement(el, 'foreignObject');
+            this.updateForeignObject(el);
+        },
+
+        // Already documented in JXG.AbstractRenderer
+        updateForeignObject: function(el) {
+            if (el._useUserSize) {
+                el.rendNode.style.overflow = 'hidden';
+            } else {
+                el.rendNode.style.overflow = 'visible';
+            }
+
+            this.updateRectPrim(el.rendNode, el.coords.scrCoords[1],
+                el.coords.scrCoords[2] - el.size[1], el.size[0], el.size[1]);
+
+            el.rendNode.innerHTML = el.content;
+            this._updateVisual(el, {stroke: true, dash: true}, true);
+        },
+
         /* **************************
          * Render primitive objects
          * **************************/
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         appendChildPrim: function (node, level) {
             if (!Type.exists(level)) { // trace nodes have level not set
                 level = 0;
@@ -626,7 +662,7 @@ define([
             return node;
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         createPrim: function (type, id) {
             var node = this.container.ownerDocument.createElementNS(this.svgNamespace, type);
             node.setAttributeNS(null, 'id', this.container.id + '_' + id);
@@ -639,14 +675,14 @@ define([
             return node;
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         remove: function (shape) {
             if (Type.exists(shape) && Type.exists(shape.parentNode)) {
                 shape.parentNode.removeChild(shape);
             }
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         setLayer: function (el, level) {
             if (!Type.exists(level)) {
                 level = 0;
@@ -657,11 +693,11 @@ define([
             this.layer[level].appendChild(el.rendNode);
         },
 
-        // already documented in JXG.AbstractRenderer
-        makeArrows: function (el) {
+        // Already documented in JXG.AbstractRenderer
+        makeArrows: function (el, a) {
             var node2,
-                ev_fa = Type.evaluate(el.visProp.firstarrow),
-                ev_la = Type.evaluate(el.visProp.lastarrow);
+                ev_fa = a.evFirst,
+                ev_la = a.evLast;
 
             // Test if the arrow heads already exist
             if (el.visPropOld.firstarrow === ev_fa &&
@@ -676,7 +712,7 @@ define([
             if (ev_fa) {
                 node2 = el.rendNodeTriangleStart;
                 if (!Type.exists(node2)) {
-                    node2 = this._createArrowHead(el, 'End');
+                    node2 = this._createArrowHead(el, 'End', a.typeFirst);
                     this.defs.appendChild(node2);
                     el.rendNodeTriangleStart = node2;
                     el.rendNode.setAttributeNS(null, 'marker-start', 'url(#' + this.container.id + '_' + el.id + 'TriangleEnd)');
@@ -692,7 +728,7 @@ define([
             if (ev_la) {
                 node2 = el.rendNodeTriangleEnd;
                 if (!Type.exists(node2)) {
-                    node2 = this._createArrowHead(el, 'Start');
+                    node2 = this._createArrowHead(el, 'Start', a.typeLast);
                     this.defs.appendChild(node2);
                     el.rendNodeTriangleEnd = node2;
                     el.rendNode.setAttributeNS(null, 'marker-end', 'url(#' + this.container.id + '_' + el.id + 'TriangleStart)');
@@ -709,7 +745,7 @@ define([
             el.visPropOld.lastarrow = ev_la;
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updateEllipsePrim: function (node, x, y, rx, ry) {
             var huge = 1000000;
 
@@ -727,7 +763,7 @@ define([
             node.setAttributeNS(null, 'ry', Math.abs(ry));
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updateLinePrim: function (node, p1x, p1y, p2x, p2y) {
             var huge = 1000000;
 
@@ -747,7 +783,7 @@ define([
             }
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updatePathPrim: function (node, pointString) {
             if (pointString === '') {
                 pointString = 'M 0 0';
@@ -755,7 +791,7 @@ define([
             node.setAttributeNS(null, 'd', pointString);
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updatePathStringPoint: function (el, size, type) {
             var s = '',
                 scr = el.coords.scrCoords,
@@ -801,7 +837,7 @@ define([
             return s;
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updatePathStringPrim: function (el) {
             var i, scr, len,
                 symbm = ' M ',
@@ -857,7 +893,7 @@ define([
             return pStr;
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updatePathStringBezierPrim: function (el) {
             var i, j, k, scr, lx, ly, len,
                 symbm = ' M ',
@@ -912,7 +948,7 @@ define([
             return pStr;
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updatePolygonPrim: function (node, el) {
             var i,
                 pStr = '',
@@ -942,7 +978,7 @@ define([
             }
         },
 
-        // already documented in JXG.AbstractRenderer
+        // Already documented in JXG.AbstractRenderer
         updateRectPrim: function (node, x, y, w, h) {
             node.setAttributeNS(null, 'x', x);
             node.setAttributeNS(null, 'y', y);
@@ -1251,6 +1287,11 @@ define([
                     if (c === 'none') {  // This is done only for non-images
                         // because images have no fill color.
                         oo = 0;
+                        // This is necessary if there is a foreignObject below.
+                        node.setAttributeNS(null, 'pointer-events', 'visibleStroke');
+                    } else {
+                        // This is the default
+                        node.setAttributeNS(null, 'pointer-events', 'visiblePainted');
                     }
                     this._setAttribute(function () {
                         node.setAttributeNS(null, 'fill-opacity', oo);
@@ -1312,11 +1353,11 @@ define([
                 if (el.elementClass === Const.OBJECT_CLASS_CURVE ||
                     el.elementClass === Const.OBJECT_CLASS_LINE) {
                     if (Type.evaluate(el.visProp.firstarrow)) {
-                        this._setArrowColor(el.rendNodeTriangleStart, c, oo, el);
+                        this._setArrowColor(el.rendNodeTriangleStart, c, oo, el, el.visPropCalc.typeFirst);
                     }
 
                     if (Type.evaluate(el.visProp.lastarrow)) {
-                        this._setArrowColor(el.rendNodeTriangleEnd, c, oo, el);
+                        this._setArrowColor(el.rendNodeTriangleEnd, c, oo, el, el.visPropCalc.typeLast);
                     }
                 }
             }
@@ -1403,10 +1444,13 @@ define([
 
         // documented in AbstractRenderer
         resize: function (w, h) {
-            this.svgRoot.style.width = parseFloat(w) + 'px';
-            this.svgRoot.style.height = parseFloat(h) + 'px';
-            this.svgRoot.setAttribute("width", parseFloat(w));
-            this.svgRoot.setAttribute("height", parseFloat(h));
+            // this.svgRoot.style.width  = parseFloat(w) + 'px';
+            // this.svgRoot.style.height = parseFloat(h) + 'px';
+
+            this.svgRoot.setAttribute('width',  parseFloat(w));
+            this.svgRoot.setAttribute('height', parseFloat(h));
+            // this.svgRoot.setAttribute('width',  '100%');
+            // this.svgRoot.setAttribute('height', '100%');
         },
 
         // documented in JXG.AbstractRenderer
@@ -1535,7 +1579,6 @@ define([
                     canvas.height = images[i].getAttribute("height");
                     try {
                         ctx.drawImage(images[i], 0, 0, canvas.width, canvas.height);
-                        //ctx.drawImage(document.getElementById('testimg2'), 0, 0, canvas.width, canvas.height);
 
                         // If the image is not png, the format must be specified here
                         ur = canvas.toDataURL();
@@ -1543,7 +1586,6 @@ define([
                     } catch (err) {
                         console.log("CORS problem! Image can not be used", err);
                     }
-                    //};
                 }
                 //canvas.remove();
             }
@@ -1555,7 +1597,7 @@ define([
          * The SVG code of the construction is base64 encoded. The return string starts
          * with "data:image/svg+xml;base64,...".
          *
-         * @param {Boolean} ignoreTexts If true, the foreignObject tag is taken out from the SVG root.
+         * @param {Boolean} ignoreTexts If true, the foreignObject tag is set to display=none.
          * This is necessary for older versions of Safari. Default: false
          * @returns {String}  data URI string
          */
@@ -1573,19 +1615,15 @@ define([
             // input values are not copied. This can be verified by looking at an innerHTML output
             // of an input element. Therefore, we do it "by hand".
             if (this.container.hasChildNodes() && Type.exists(this.foreignObjLayer)) {
+                if (!ignoreTexts) {
+                    this.foreignObjLayer.setAttribute('display', 'inline');
+                }
                 while (svgRoot.nextSibling) {
 
                     // Copy all value attributes
                     values = values.concat(this._getValuesOfDOMElements(svgRoot.nextSibling));
 
                     this.foreignObjLayer.appendChild(svgRoot.nextSibling);
-                }
-                if (ignoreTexts === true) {
-                    // Take out foreignObjLayer, so that it will not be visible
-                    // in the dump.
-                    doc = this.container.ownerDocument;
-                    virtualNode = doc.createElement('div');
-                    virtualNode.appendChild(this.foreignObjLayer);
                 }
             }
 
@@ -1610,8 +1648,8 @@ define([
             // }
 
             // In IE we have to remove the namespace again.
-            if ((svg.match(/xmlns=\"http:\/\/www.w3.org\/2000\/svg\"/g) || []).length > 1) {
-                svg = svg.replace(/xmlns=\"http:\/\/www.w3.org\/2000\/svg\"/g, '');
+            if ((svg.match(/xmlns="http:\/\/www.w3.org\/2000\/svg"/g) || []).length > 1) {
+                svg = svg.replace(/xmlns="http:\/\/www.w3.org\/2000\/svg"/g, '');
             }
 
             // Safari fails if the svg string contains a "&nbsp;"
@@ -1621,19 +1659,15 @@ define([
             // Move all HTML tags back from
             // the foreignObject element to the container
             if (Type.exists(this.foreignObjLayer) && this.foreignObjLayer.hasChildNodes()) {
-                if (ignoreTexts === true) {
-                    // Put foreignObjLayer back into the SVG
-                    svgRoot.appendChild(this.foreignObjLayer);
-                }
                 // Restore all HTML elements
                 while (this.foreignObjLayer.firstChild) {
                     this.container.appendChild(this.foreignObjLayer.firstChild);
                 }
+                this.foreignObjLayer.setAttribute("display", "none");
             }
 
             return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
         },
-
 
         /**
          * Convert the SVG construction into an HTML canvas image.
@@ -1660,17 +1694,16 @@ define([
          * 	setTimeout(function() { console.log('done'); }, 400);
          */
         dumpToCanvas: function (canvasId, w, h, ignoreTexts) {
-            var //svgRoot = this.svgRoot,
-                svg, tmpImg, cv, ctx;
-                // wOrg, hOrg;
-
-            // wOrg = svgRoot.getAttribute('width');
-            // hOrg = svgRoot.getAttribute('height');
+            var svg, tmpImg, cv, ctx;
 
             // Prepare the canvas element
             cv = document.getElementById(canvasId);
+
             // Clear the canvas
+            /* eslint-disable no-self-assign */
             cv.width = cv.width;
+            /* eslint-enable no-self-assign */
+
             ctx = cv.getContext("2d");
             if (w !== undefined && h !== undefined) {
                 cv.style.width = parseFloat(w) + 'px';
@@ -1757,8 +1790,8 @@ define([
                 return this;
             }
 
-            w = bas.scale * parseFloat(this.container.style.width);
-            h = bas.scale * parseFloat(this.container.style.height);
+            w = bas.scale * this.container.getBoundingClientRect().width;
+            h = bas.scale * this.container.getBoundingClientRect().height;
 
             if (imgId === undefined || imgId === '') {
                 newImg = true;

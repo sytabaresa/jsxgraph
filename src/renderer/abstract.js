@@ -37,7 +37,8 @@
     plusplus: Only allowed in for-loops
     newcap:   AsciiMathMl exposes non-constructor functions beginning with upper case letters
 */
-/*jslint nomen: true, plusplus: true, newcap:true*/
+/*jslint nomen: true, plusplus: true, newcap: true, unparam: true*/
+/*eslint no-unused-vars: "off"*/
 
 /* depends:
  jxg
@@ -229,6 +230,10 @@ define([
                     if (!not.gradient) {
                         this.setShadow(el);
                     }
+
+                    if (!not.tabindex) {
+                        this.setTabindex(el);
+                    }
                 } else {
                     this.setDraft(el);
                 }
@@ -390,9 +395,102 @@ define([
         },
 
         /**
+         * Updates visual appearance of the renderer element assigned to the given {@link JXG.Line}.
+         * @param {JXG.Line} el Reference to the {@link JXG.Line} object that has to be updated.
+         * @see Line
+         * @see JXG.Line
+         * @see JXG.AbstractRenderer#drawLine
+         */
+        updateLine: function (el) {
+            this._updateVisual(el);
+            this.updatePathWithArrowHeads(el);  // Calls the renderer primitive
+            this.setLineCap(el);
+        },
+
+        /* **************************
+         *    Curves
+         * **************************/
+
+        /**
+         * Draws a {@link JXG.Curve} on the {@link JXG.Board}.
+         * @param {JXG.Curve} el Reference to a graph object, that has to be plotted.
+         * @see Curve
+         * @see JXG.Curve
+         * @see JXG.AbstractRenderer#updateCurve
+         */
+        drawCurve: function (el) {
+            el.rendNode = this.appendChildPrim(this.createPrim('path', el.id), Type.evaluate(el.visProp.layer));
+            this.appendNodesToElement(el, 'path');
+            this.updateCurve(el);
+        },
+
+        /**
+         * Updates visual appearance of the renderer element assigned to the given {@link JXG.Curve}.
+         * @param {JXG.Curve} el Reference to a {@link JXG.Curve} object, that has to be updated.
+         * @see Curve
+         * @see JXG.Curve
+         * @see JXG.AbstractRenderer#drawCurve
+         */
+        updateCurve: function (el) {
+            this._updateVisual(el);
+            this.updatePathWithArrowHeads(el); // Calls the renderer primitive
+            this.setLineCap(el);
+        },
+
+        /* **************************
+         *    Arrow heads and related stuff
+         * **************************/
+
+        /**
+         * Handles arrow heads of a line or curve element and calls the renderer primitive.
+         *
+         * @param {JXG.GeometryElement} el Reference to a line or curve object that has to be drawn.
+         * @param {Boolean} doHighlight
+         *
+         * @private
+         * @see Line
+         * @see JXG.Line
+         * @see Curve
+         * @see JXG.Curve
+         * @see JXG.AbstractRenderer#updateLine
+         * @see JXG.AbstractRenderer#updateCurve
+         * @see JXG.AbstractRenderer#makeArrows
+         * @see JXG.AbstractRenderer#getArrowHeadData
+         */
+        updatePathWithArrowHeads: function(el, doHighlight) {
+            var ev = el.visProp,
+                hl = doHighlight ? 'highlight' : '',
+                w,
+                arrowData;
+
+            if (doHighlight && ev.highlightstrokewidth) {
+                w = Math.max(Type.evaluate(ev.highlightstrokewidth), Type.evaluate(ev.strokewidth));
+            } else {
+                w = Type.evaluate(ev.strokewidth);
+            }
+
+            // Get information if there are arrow heads and how large they are.
+            arrowData = this.getArrowHeadData(el, w, hl);
+
+            // Create the SVG nodes if neccessary
+            this.makeArrows(el, arrowData);
+
+            // Draw the paths with arrow heads
+            if (el.elementClass === Const.OBJECT_CLASS_LINE) {
+                this.updateLineWithEndings(el, arrowData);
+            } else if (el.elementClass === Const.OBJECT_CLASS_CURVE) {
+                this.updatePath(el);
+            }
+
+            this.setArrowSize(el, arrowData);
+        },
+
+        /**
          * This method determines some data about the line endings of this element.
          * If there are arrow heads, the offset is determined so that no parts of the line stroke
-         * overlap over the arrow head.
+         * lap over the arrow head.
+         * <p>
+         * The returned object also contains the types of the arrow heads.
          *
          * @param {JXG.GeometryElement} el JSXGraph line or curve element
          * @param {Number} strokewidth strokewidth of the element
@@ -422,9 +520,21 @@ define([
 
                 if (Type.exists(ev_fa.type)) {
                     typeFirst = Type.evaluate(ev_fa.type);
+                } else {
+                    if (el.elementClass === Const.OBJECT_CLASS_LINE) {
+                        typeFirst = 1;
+                    } else {
+                        typeFirst = 7;
+                    }
                 }
                 if (Type.exists(ev_la.type)) {
                     typeLast = Type.evaluate(ev_la.type);
+                } else {
+                    if (el.elementClass === Const.OBJECT_CLASS_LINE) {
+                        typeLast = 1;
+                    } else {
+                        typeLast = 7;
+                    }
                 }
 
                 if (ev_fa) {
@@ -435,6 +545,7 @@ define([
                     if (hl !== '' && Type.exists(ev_fa[hl + 'size'])) {
                         size = Type.evaluate(ev_fa[hl + 'size']);
                     }
+
                     off = strokewidth * size;
                     if (typeFirst === 2) {
                         off *= 0.5;
@@ -445,6 +556,10 @@ define([
                     } else if (typeFirst === 4 || typeFirst === 5 || typeFirst === 6) {
                         off = strokewidth * size / 1.5;
                         minlen += strokewidth * size;
+                    } else if (typeFirst === 7) {
+                        off = 0;
+                        size = 10;
+                        minlen += strokewidth;
                     } else {
                         minlen += strokewidth * size;
                     }
@@ -470,6 +585,10 @@ define([
                     } else if (typeLast === 4 || typeLast === 5 || typeLast === 6) {
                         off = strokewidth * size / 1.5;
                         minlen += strokewidth * size;
+                    } else if (typeLast === 7) {
+                        off = 0;
+                        size = 10;
+                        minlen += strokewidth;
                     } else {
                         minlen += strokewidth * size;
                     }
@@ -477,10 +596,14 @@ define([
                     sizeLast = size;
                 }
             }
+            el.visPropCalc.typeFirst = typeFirst;
+            el.visPropCalc.typeLast = typeLast;
 
             return {
                 evFirst: ev_fa,
                 evLast: ev_la,
+                typeFirst: typeFirst,
+                typeLast: typeLast,
                 offFirst: offFirst,
                 offLast: offLast,
                 sizeFirst: sizeFirst,
@@ -493,7 +616,67 @@ define([
         },
 
         /**
-         * Shorten the line length such that the arrow head touches
+         * Corrects the line length if there are arrow heads, such that
+         * the arrow ends exactly at the intended position.
+         * Calls the renderer method to draw the line.
+         *
+         * @param {JXG.Line} el Reference to a line object, that has to be drawn
+         * @param {Object} arrowData Data concerning possible arrow heads
+         *
+         * @returns {JXG.AbstractRenderer} Reference to the renderer
+         *
+         * @private
+         * @see Line
+         * @see JXG.Line
+         * @see JXG.AbstractRenderer#updateLine
+         * @see JXG.AbstractRenderer#getPositionArrowHead
+         *
+         */
+        updateLineWithEndings: function(el, arrowData) {
+            var c1, c2,
+                // useTotalLength = true,
+                margin = null;
+
+            c1 = new Coords(Const.COORDS_BY_USER, el.point1.coords.usrCoords, el.board);
+            c2 = new Coords(Const.COORDS_BY_USER, el.point2.coords.usrCoords, el.board);
+            margin = Type.evaluate(el.visProp.margin);
+            Geometry.calcStraight(el, c1, c2, margin);
+
+            this.handleTouchpoints(el, c1, c2, arrowData);
+            this.getPositionArrowHead(el, c1, c2, arrowData);
+
+            this.updateLinePrim(el.rendNode,
+                c1.scrCoords[1], c1.scrCoords[2],
+                c2.scrCoords[1], c2.scrCoords[2], el.board);
+
+            return this;
+        },
+
+        /**
+         *
+         * Calls the renderer method to draw a curve.
+         *
+         * @param {JXG.GeometryElement} el Reference to a line object, that has to be drawn.
+         * @returns {JXG.AbstractRenderer} Reference to the renderer
+         *
+         * @private
+         * @see Curve
+         * @see JXG.Curve
+         * @see JXG.AbstractRenderer#updateCurve
+         *
+         */
+        updatePath: function(el) {
+            if (Type.evaluate(el.visProp.handdrawing)) {
+                this.updatePathPrim(el.rendNode, this.updatePathStringBezierPrim(el), el.board);
+            } else {
+                this.updatePathPrim(el.rendNode, this.updatePathStringPrim(el), el.board);
+            }
+
+            return this;
+        },
+
+        /**
+         * Shorten the length of a line element such that the arrow head touches
          * the start or end point and such that the arrow head ends exactly
          * at the start / end position of the line.
          *
@@ -507,13 +690,13 @@ define([
          * Additionally, if one of these values is zero, the arrow is not displayed. This is the case, if the
          * line length is very short.
          */
-        getPositionArrowHead: function(el, c1, c2, a) {
+         getPositionArrowHead: function(el, c1, c2, a) {
             var d, d1x, d1y, d2x, d2y;
 
             /*
                Handle arrow heads.
 
-               The default arrow head is an isosceles triangle with base length 10 units and height 10 units.
+               The default arrow head (type==1) is an isosceles triangle with base length 10 units and height 10 units.
                These 10 units are scaled to strokeWidth * arrowSize pixels pixels.
             */
             if (a.evFirst || a.evLast) {
@@ -556,7 +739,7 @@ define([
          * @param {Object} a
          */
         handleTouchpoints: function(el, c1, c2, a) {
-            var s1, s2, s, d,
+            var s1, s2, d,
                 d1x, d1y, d2x, d2y;
 
             if (a.evFirst || a.evLast) {
@@ -564,7 +747,6 @@ define([
 
                 s1 = Type.evaluate(el.point1.visProp.size) + Type.evaluate(el.point1.visProp.strokewidth);
                 s2 = Type.evaluate(el.point2.visProp.size) + Type.evaluate(el.point2.visProp.strokewidth);
-                s = s1 + s2;
 
                 // Handle touchlastpoint /touchfirstpoint
                 if (a.evFirst && Type.evaluate(el.visProp.touchfirstpoint)) {
@@ -584,84 +766,6 @@ define([
                 c1.setCoordinates(Const.COORDS_BY_SCREEN, [c1.scrCoords[1] + d1x, c1.scrCoords[2] + d1y], false, true);
                 c2.setCoordinates(Const.COORDS_BY_SCREEN, [c2.scrCoords[1] - d2x, c2.scrCoords[2] - d2y], false, true);
             }
-
-            return this;
-        },
-
-        /**
-         * Corrects the line length if there are arrow heads, such that
-         * the arrow ends exactly at the intended position.
-         * Calls the renderer method to draw the line.
-         *
-         * @param {JXG.Line} el Reference to a line object, that has to be drawn
-         * @param {Object} arrowData Data concerning possible arrow heads
-         *
-         * @returns {JXG.AbstractRenderer} Reference to the renderer
-         *
-         * @private
-         * @see Line
-         * @see JXG.Line
-         * @see JXG.AbstractRenderer#updateLine
-         * @see JXG.AbstractRenderer#getPositionArrowHead
-         * @see JXG.AbstractRenderer#getArrowHeadData
-         *
-         */
-        updateLineEndings: function(el, arrowData) {
-            var c1, c2,
-                // useTotalLength = true,
-                margin = null;
-
-            c1 = new Coords(Const.COORDS_BY_USER, el.point1.coords.usrCoords, el.board);
-            c2 = new Coords(Const.COORDS_BY_USER, el.point2.coords.usrCoords, el.board);
-            margin = Type.evaluate(el.visProp.margin);
-            Geometry.calcStraight(el, c1, c2, margin);
-
-            this.handleTouchpoints(el, c1, c2, arrowData);
-
-            // Shorten path without el.rendNode.getTotalLength
-            // if (!Type.exists(el.rendNode.getTotalLength)) {
-                this.getPositionArrowHead(el, c1, c2, arrowData);
-            //     useTotalLength = false;
-            // }
-
-            this.updateLinePrim(el.rendNode,
-                c1.scrCoords[1], c1.scrCoords[2],
-                c2.scrCoords[1], c2.scrCoords[2], el.board);
-
-            // Shorten path with el.rendNode.getTotalLength
-            // This does not work sufficiently good in webkit.
-            // See also _createArrowHead for arrow head position
-            // if (useTotalLength) {
-            //     this.shortenPath(el.rendNode, arrowData.offFirst, arrowData.offLast);
-            // }
-
-            return this;
-        },
-
-        /**
-         *
-         * Calls the renderer method to draw the curve and
-         * corrects the curve length if there are arrow heads, such that
-         * the arrow ends exactly at the intended position.
-         *
-         * @param {JXG.GeometryElement} el Reference to a line object, that has to be drawn.
-         * @param {Object} arrowData Data concerning possible arrow heads
-         * @returns {JXG.AbstractRenderer} Reference to the renderer
-         *
-         * @private
-         * @see Curve
-         * @see JXG.Curve
-         * @see JXG.AbstractRenderer#updateCurve
-         * @see JXG.AbstractRenderer#getArrowHeadData
-         */
-        updatePathEndings: function(el, arrowData) {
-            if (Type.evaluate(el.visProp.handdrawing)) {
-                this.updatePathPrim(el.rendNode, this.updatePathStringBezierPrim(el), el.board);
-            } else {
-                this.updatePathPrim(el.rendNode, this.updatePathStringPrim(el), el.board);
-            }
-
-            this.shortenPath(el.rendNode, arrowData.offFirst, arrowData.offLast);
 
             return this;
         },
@@ -692,60 +796,6 @@ define([
         },
 
         /**
-         * Handle arrow heads of a line or curve element and call the renderer primitive.
-         *
-         * @param {JXG.GeometryElement} el Reference to a line or curve object that has to be drawn.
-         * @param {Boolean} doHighlight
-         *
-         * @private
-         * @see Line
-         * @see JXG.Line
-         * @see Curve
-         * @see JXG.Curve
-         * @see JXG.AbstractRenderer#makeArrows
-         * @see JXG.AbstractRenderer#getArrowHeadData
-         */
-        updatePathWithArrowHeads: function(el, doHighlight) {
-            var ev = el.visProp,
-                hl = doHighlight ? 'highlight' : '',
-                w,
-                arrowData;
-
-            if (doHighlight && ev.highlightstrokewidth) {
-                w = Math.max(Type.evaluate(ev.highlightstrokewidth), Type.evaluate(ev.strokewidth));
-            } else {
-                w = Type.evaluate(ev.strokewidth);
-            }
-
-            // Get information if there are arrow heads and how large they are.
-            arrowData = this.getArrowHeadData(el, w, hl);
-
-            // Create the SVG nodes if neccessary
-            this.makeArrows(el);
-
-            // Draw the paths with arrow heads
-            if (el.elementClass === Const.OBJECT_CLASS_LINE) {
-                this.updateLineEndings(el, arrowData);
-            } else if (el.elementClass === Const.OBJECT_CLASS_CURVE) {
-                this.updatePathEndings(el, arrowData);
-            }
-            this.setArrowSize(el, arrowData);
-        },
-
-        /**
-         * Updates visual appearance of the renderer element assigned to the given {@link JXG.Line}.
-         * @param {JXG.Line} el Reference to the {@link JXG.Line} object that has to be updated.
-         * @see Line
-         * @see JXG.Line
-         * @see JXG.AbstractRenderer#drawLine
-         */
-        updateLine: function (el) {
-            this._updateVisual(el);
-            this.updatePathWithArrowHeads(el);
-            this.setLineCap(el);
-        },
-
-        /**
          * Update the line endings (linecap) of a straight line from its attribute
          * 'linecap'.
          * Possible values for the attribute 'linecap' are: 'butt', 'round', 'square'.
@@ -757,6 +807,10 @@ define([
          * @see JXG.AbstractRenderer#updateLine
          */
         setLineCap: function(el) { /* stub */ },
+
+        /* **************************
+         *    Ticks related stuff
+         * **************************/
 
         /**
          * Creates a rendering node for ticks added to a line.
@@ -783,39 +837,6 @@ define([
          * @see JXG.AbstractRenderer#drawTicks
          */
         updateTicks: function (element) { /* stub */ },
-
-        /* **************************
-         *    Curves
-         * **************************/
-
-        /**
-         * Draws a {@link JXG.Curve} on the {@link JXG.Board}.
-         * @param {JXG.Curve} el Reference to a graph object, that has to be plotted.
-         * @see Curve
-         * @see JXG.Curve
-         * @see JXG.AbstractRenderer#updateCurve
-         */
-        drawCurve: function (el) {
-            el.rendNode = this.appendChildPrim(this.createPrim('path', el.id), Type.evaluate(el.visProp.layer));
-            this.appendNodesToElement(el, 'path');
-            if (el.numberPoints > 1) {
-                this.makeArrows(el);
-            }
-            this._updateVisual(el, {shadow: true}, true);
-            this.updateCurve(el);
-        },
-
-        /**
-         * Updates visual appearance of the renderer element assigned to the given {@link JXG.Curve}.
-         * @param {JXG.Curve} el Reference to a {@link JXG.Curve} object, that has to be updated.
-         * @see Curve
-         * @see JXG.Curve
-         * @see JXG.AbstractRenderer#drawCurve
-         */
-        updateCurve: function (el) {
-            this.updatePathWithArrowHeads(el);
-            this._updateVisual(el);
-        },
 
         /* **************************
          *    Circle related stuff
@@ -857,7 +878,6 @@ define([
                     (radius * el.board.unitY));
             }
         },
-
 
         /* **************************
          *   Polygon related stuff
@@ -991,7 +1011,8 @@ define([
          * @see JXG.AbstractRenderer#updateTextStyle
          */
         updateText: function (el) {
-            var content = el.plaintext, v, c,
+            var content = el.plaintext,
+                v, c,
                 parentNode,
                 scale, vshift, id, wrap_id,
                 ax, ay;
@@ -1010,11 +1031,14 @@ define([
                         ax = el.getAnchorX();
 
                         if (ax === 'right') {
-                            v = Math.floor(el.board.canvasWidth - c);
+                            // v = Math.floor(el.board.canvasWidth - c);
+                            v = el.board.canvasWidth - c;
                         } else if (ax === 'middle') {
-                            v = Math.floor(c - 0.5 * el.size[0]);
+                            // v = Math.floor(c - 0.5 * el.size[0]);
+                            v = c - 0.5 * el.size[0];
                         } else { // 'left'
-                            v = Math.floor(c);
+                            // v = Math.floor(c);
+                            v = c;
                         }
 
                         // This may be useful for foreignObj.
@@ -1039,11 +1063,14 @@ define([
                         ay = el.getAnchorY();
 
                         if (ay === 'bottom') {
-                            v = Math.floor(el.board.canvasHeight - c);
+                            // v = Math.floor(el.board.canvasHeight - c);
+                            v = el.board.canvasHeight - c;
                         } else if (ay === 'middle') {
-                            v = Math.floor(c - 0.5 * el.size[1]);
+                            // v = Math.floor(c - 0.5 * el.size[1]);
+                            v = c - 0.5 * el.size[1];
                         } else { // top
-                            v = Math.floor(c);
+                            // v = Math.floor(c);
+                            v = c;
                         }
 
                         // This may be useful for foreignObj.
@@ -1066,10 +1093,18 @@ define([
                     // Set the content
                     if (el.htmlStr !== content) {
                         try {
-                            el.rendNode.innerHTML = content;
+                            if (el.type === Type.OBJECT_TYPE_BUTTON) {
+                                el.rendNodeButton.innerHTML = content;
+                            } else if (el.type === Type.OBJECT_TYPE_CHECKBOX ||
+                                el.type === Type.OBJECT_TYPE_INPUT) {
+                                el.rendNodeLabel.innerHTML = content;
+                            } else {
+                                el.rendNode.innerHTML = content;
+                            }
                         } catch (e) {
-                            // Setting innerHTML sometimes fails in IE8. A workaround is to
-                            // take the node off the DOM, assign innerHTML, then append back.
+                            // Setting innerHTML sometimes fails in IE8.
+                            // A workaround is to take the node off the DOM, assign innerHTML,
+                            // then append back.
                             // Works for text elements as they are absolutely positioned.
                             parentNode = el.rendNode.parentNode;
                             el.rendNode.parentNode.removeChild(el.rendNode);
@@ -1105,9 +1140,11 @@ define([
                             }
                         } else if (Type.evaluate(el.visProp.usekatex)) {
                             try {
+                                /* eslint-disable no-undef */
                                 katex.render(content, el.rendNode, {
                                     throwOnError: false
                                 });
+                                /* eslint-enable no-undef */
                             } catch (e) {
                                 JXG.debug('KaTeX (not yet) loaded');
                             }
@@ -1177,6 +1214,7 @@ define([
                 display = Env.isBrowser ? ev.display : 'internal',
                 nodeList = ['rendNode', 'rendNodeTag', 'rendNodeLabel'],
                 lenN = nodeList.length,
+                fontUnit = Type.evaluate(ev.fontunit),
                 cssList, prop, style, cssString,
                 styleList = ['cssdefaultstyle', 'cssstyle'],
                 lenS = styleList.length;
@@ -1229,7 +1267,7 @@ define([
                     try {
                         for (node = 0; node < lenN; node++) {
                             if (Type.exists(el[nodeList[node]])) {
-                                el[nodeList[node]].style.fontSize = fs + 'px';
+                                el[nodeList[node]].style.fontSize = fs + fontUnit;
                             }
                         }
                     } catch (e) {
@@ -1392,6 +1430,9 @@ define([
             el.rendNode.className = Type.evaluate(doHighlight ? el.visProp.highlightcssclass : el.visProp.cssclass);
         },
 
+        drawForeignObject: function (el) { /* stub */ },
+
+        updateForeignObject: function(el) { /* stub */ },
 
         /* **************************
          * Render primitive objects
@@ -1435,9 +1476,10 @@ define([
          * Can be used to create the nodes to display arrows. This is an abstract method which has to be implemented
          * in any descendant renderer.
          * @param {JXG.GeometryElement} element The element the arrows are to be attached to.
+         * @param {Object} arrowData Data concerning possible arrow heads
          *
          */
-        makeArrows: function (element) { /* stub */ },
+        makeArrows: function (element, arrowData) { /* stub */ },
 
         /**
          * Updates width of an arrow DOM node. Used in
@@ -1539,6 +1581,17 @@ define([
          * @param {String} val New value for the attribute.
          */
         setPropertyPrim: function (node, key, val) { /* stub */ },
+
+        setTabindex: function(element) {
+            var val;
+            if (Type.exists(element.rendNode)) {
+                val = Type.evaluate(element.visProp.tabindex);
+                if (val !== element.visPropOld.tabindex) {
+                    element.rendNode.setAttribute('tabindex', val);
+                    element.visPropOld.tabindex = val;
+                }
+            }
+        },
 
         /**
          * Shows or hides an element on the canvas; Only a stub, requires implementation in the derived renderer.
@@ -1697,8 +1750,7 @@ define([
          * @see JXG.AbstractRenderer#updateTextStyle
          */
         highlight: function (el) {
-            var i, ev = el.visProp,
-                sw, obj;
+            var i, ev = el.visProp, sw;
 
             this.setObjectTransition(el);
             if (!ev.draft) {
@@ -1745,8 +1797,7 @@ define([
          * @see JXG.AbstractRenderer#updateTextStyle
          */
         noHighlight: function (el) {
-            var i, ev = el.visProp,
-                obj, sw;
+            var i, ev = el.visProp, sw;
 
             this.setObjectTransition(el);
             if (!Type.evaluate(el.visProp.draft)) {
@@ -1841,6 +1892,7 @@ define([
                     if (button.classList !== undefined) { // classList not available in IE 9
                         button.classList.add('JXG_navigation_button');
                     }
+                    // button.setAttribute('tabindex', 0);
 
                     // Highlighting is now done with CSS
                     // Env.addEvent(button, 'mouseover', function () {
@@ -1886,7 +1938,7 @@ define([
 
                 if (board.attr.showfullscreen) {
                     createButton(board.attr.fullscreen.symbol, function () {
-                        board.toFullscreen();
+                        board.toFullscreen(board.attr.fullscreen.id);
                     });
                 }
 
@@ -2022,19 +2074,6 @@ define([
          * See JXG.SVGRenderer#screenshot
          */
         screenshot: function (board) {},
-
-        /**
-         * Shorten SVG path at the beginning and at the end to avoid visible overlap of
-         * the line and its arrow heads. This method uses the SVG method getTotalLength.
-         *
-         * @param {Node} node Reference to a SVG node representing a line or curve.
-         * @param {Number} offFirst Shorten path at the beginning by this number of pixels
-         * @param {Number} offLast Shorten path at the end by this number of pixels
-         *
-         * @see JXG.AbstractRenderer#updatePathEndings
-         * @see JXG.AbstractRenderer#updateLineEndings
-         */
-        shortenPath: function(node, offFirst, offLast) {},
 
         /**
          * Move element into new layer. This is trivial for canvas, but needs more effort in SVG.

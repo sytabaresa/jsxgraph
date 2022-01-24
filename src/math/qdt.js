@@ -10,20 +10,20 @@
     This file is part of JSXGraph.
 
     JSXGraph is free software dual licensed under the GNU LGPL or MIT License.
-    
+
     You can redistribute it and/or modify it under the terms of the
-    
+
       * GNU Lesser General Public License as published by
         the Free Software Foundation, either version 3 of the License, or
         (at your option) any later version
       OR
       * MIT License: https://github.com/jsxgraph/jsxgraph/blob/master/LICENSE.MIT
-    
+
     JSXGraph is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU Lesser General Public License for more details.
-    
+
     You should have received a copy of the GNU Lesser General Public License and
     the MIT License along with JSXGraph. If not, see <http://www.gnu.org/licenses/>
     and <http://opensource.org/licenses/MIT/>.
@@ -42,58 +42,64 @@ define(['math/math', 'utils/type'], function (Mat, Type) {
 
     "use strict";
 
-    var
+    /**
+     * Instantiate a new quad tree.
+     *
+     * @name JXG.Math.Quadtree
+     * @exports Mat.Quadtree as JXG.Math.Quadtree
+     * @param {Array} bbox Bounding box of the new quad (sub)tree.
+     * @constructor
+     */
+    Mat.Quadtree = function (bbox) {
         /**
-         * Instantiate a new quad tree.
-         * @param {Array} bbox Bounding box of the new quad (sub)tree.
-         * @constructor
+         * The maximum number of points stored in a quad tree node
+         * before it is subdivided.
+         * @type Number
+         * @default 10
          */
-        Quadtree = function (bbox) {
-            /**
-             * The maximum number of points stored in a quad tree node
-             * before it is subdivided.
-             * @type {Number}
-             * @default 10
-             */
-            this.capacity = 10;
+        this.capacity = 10;
 
-            /**
-             * Point storage.
-             * @type {Array}
-             */
-            this.points = [];
+        /**
+         * Point storage.
+         * @name JXG.Math.Quadtree#points
+         * @type Array
+         */
+        this.points = [];
+        this.xlb = bbox[0];
+        this.xub = bbox[2];
+        this.ylb = bbox[3];
+        this.yub = bbox[1];
 
-            this.xlb = bbox[0];
-            this.xub = bbox[2];
-            this.ylb = bbox[3];
-            this.yub = bbox[1];
+        /**
+         * In a subdivided quad tree this represents the top left subtree.
+         * @name JXG.Math.Quadtree#northWest
+         * @type JXG.Math.Quadtree
+         */
+        this.northWest = null;
 
-            /**
-             * In a subdivided quad tree this represents the top left subtree.
-             * @type {JXG.Quadtree}
-             */
-            this.northWest = null;
+        /**
+         * In a subdivided quad tree this represents the top right subtree.
+         * @name JXG.Math.Quadtree#northEast
+         * @type JXG.Math.Quadtree
+         */
+        this.northEast = null;
 
-            /**
-             * In a subdivided quad tree this represents the top right subtree.
-             * @type {JXG.Quadtree}
-             */
-            this.northEast = null;
+        /**
+         * In a subdivided quad tree this represents the bottom right subtree.
+         * @name JXG.Math.Quadtree#southEast
+         * @type JXG.Math.Quadtree
+         */
+        this.southEast = null;
 
-            /**
-             * In a subdivided quad tree this represents the bottom right subtree.
-             * @type {JXG.Quadtree}
-             */
-            this.southEast = null;
+        /**
+         * In a subdivided quad tree this represents the bottom left subtree.
+         * @name JXG.Math.Quadtree#southWest
+         * @type JXG.Math.Quadtree
+         */
+        this.southWest = null;
+    };
 
-            /**
-             * In a subdivided quad tree this represents the bottom left subtree.
-             * @type {JXG.Quadtree}
-             */
-            this.southWest = null;
-        };
-
-    Type.extend(Quadtree.prototype, /** @lends JXG.Quadtree.prototype */ {
+    Type.extend(Mat.Quadtree.prototype, /** @lends JXG.Math.Quadtree.prototype */ {
         /**
          * Checks if the given coordinates are inside the quad tree.
          * @param {Number} x
@@ -149,10 +155,10 @@ define(['math/math', 'utils/type'], function (Mat, Type) {
                 mx = this.xlb + (this.xub - this.xlb) / 2,
                 my = this.ylb + (this.yub - this.ylb) / 2;
 
-            this.northWest = new Quadtree([this.xlb, this.yub, mx, my]);
-            this.northEast = new Quadtree([mx, this.yub, this.xub, my]);
-            this.southEast = new Quadtree([this.xlb, my, mx, this.ylb]);
-            this.southWest = new Quadtree([mx, my, this.xub, this.ylb]);
+            this.northWest = new Mat.Quadtree([this.xlb, this.yub, mx, my]);
+            this.northEast = new Mat.Quadtree([mx, this.yub, this.xub, my]);
+            this.southEast = new Mat.Quadtree([this.xlb, my, mx, this.ylb]);
+            this.southWest = new Mat.Quadtree([mx, my, this.xub, this.ylb]);
 
             for (i = 0; i < l; i += 1) {
                 this.northWest.insert(this.points[i]);
@@ -164,6 +170,7 @@ define(['math/math', 'utils/type'], function (Mat, Type) {
 
         /**
          * Internal _query method that lacks adjustment of the parameter.
+         * @name JXG.Math.Quadtree#_query
          * @param {Number} x
          * @param {Number} y
          * @returns {Boolean|JXG.Quadtree} The quad tree if the point is found, false
@@ -205,6 +212,7 @@ define(['math/math', 'utils/type'], function (Mat, Type) {
 
         /**
          * Retrieve the smallest quad tree that contains the given point.
+         * @name JXG.Math.Quadtree#_query
          * @param {JXG.Coords|Number} xp
          * @param {Number} y
          * @returns {Boolean|JXG.Quadtree} The quad tree if the point is found, false
@@ -227,7 +235,5 @@ define(['math/math', 'utils/type'], function (Mat, Type) {
         }
     });
 
-    Mat.Quadtree = Quadtree;
-
-    return Quadtree;
+    return Mat.Quadtree;
 });

@@ -140,7 +140,12 @@ define([
             }
         ], attr);
 
-        p.addChild(t);
+        if (Type.exists(p._is_new)) {
+            t.addChild(p);
+            delete p._is_new;
+        } else {
+            p.addChild(t);
+        }
         l.addChild(t);
 
         t.elType = 'orthogonalprojection';
@@ -148,7 +153,13 @@ define([
 
         t.update();
 
-        t.generatePolynomial = function () {
+        /**
+         * Used to generate a polynomial for the orthogonal projection
+         * @name Orthogonalprojection#generatePolynomial
+         * @returns {Array} An array containing the generated polynomial.
+         * @private
+         */
+         t.generatePolynomial = function () {
             /*
              *  Perpendicular takes point P and line L and creates point T and line M:
              *
@@ -272,6 +283,14 @@ define([
         pd.elType = 'perpendicular';
         pd.setParents([l.id, p.id]);
 
+        if (Type.exists(p._is_new)) {
+            pd.addChild(p);
+            delete p._is_new;
+        } else {
+            p.addChild(pd);
+        }
+        l.addChild(pd);
+
         return pd;
     };
 
@@ -327,7 +346,12 @@ define([
             }
         ], attributes);
 
-        p.addChild(t);
+        if (Type.exists(p._is_new)) {
+            t.addChild(p);
+            delete p._is_new;
+        } else {
+            p.addChild(t);
+        }
         l.addChild(t);
 
         t.elType = 'perpendicularpoint';
@@ -335,7 +359,13 @@ define([
 
         t.update();
 
-        t.generatePolynomial = function () {
+        /**
+         * Used to generate a polynomial for the perpendicular point
+         * @name PerpendicularPoint#generatePolynomial
+         * @returns {Array} An array containing the generated polynomial.
+         * @private
+         */
+         t.generatePolynomial = function () {
             /*
              *  Perpendicular takes point P and line L and creates point T and line M:
              *
@@ -463,6 +493,14 @@ define([
          */
         pd.point = t;
 
+        if (Type.exists(p._is_new)) {
+            pd.addChild(p);
+            delete p._is_new;
+        } else {
+            p.addChild(pd);
+        }
+        l.addChild(pd);
+
         pd.elType = 'perpendicularsegment';
         pd.setParents([p.id, l.id]);
         pd.subs = {
@@ -541,15 +579,34 @@ define([
 
                 return y * 0.5;
             }], attr);
-        a.addChild(t);
-        b.addChild(t);
+        if (Type.exists(a._is_new)) {
+            t.addChild(a);
+            delete a._is_new;
+        } else {
+            a.addChild(t);
+        }
+        if (Type.exists(b._is_new)) {
+            t.addChild(b);
+            delete b._is_new;
+        } else {
+            b.addChild(t);
+        }
+
+
+
 
         t.elType = 'midpoint';
         t.setParents([a.id, b.id]);
 
         t.prepareUpdate().update();
 
-        t.generatePolynomial = function () {
+        /**
+         * Used to generate a polynomial for the midpoint.
+         * @name Midpoint#generatePolynomial
+         * @returns {Array} An array containing the generated polynomial.
+         * @private
+         */
+         t.generatePolynomial = function () {
             /*
              *  Midpoint takes two point A and B or line L (with points P and Q) and creates point T:
              *
@@ -663,9 +720,24 @@ define([
         ], attributes);
 
         // required for algorithms requiring dependencies between elements
-        a.addChild(p);
-        b.addChild(p);
-        c.addChild(p);
+        if (Type.exists(a._is_new)) {
+            p.addChild(a);
+            delete a._is_new;
+        } else {
+            a.addChild(p);
+        }
+        if (Type.exists(b._is_new)) {
+            p.addChild(b);
+            delete b._is_new;
+        } else {
+            b.addChild(p);
+        }
+        if (Type.exists(c._is_new)) {
+            p.addChild(c);
+            delete c._is_new;
+        } else {
+            c.addChild(p);
+        }
 
         p.elType = 'parallelpoint';
         p.setParents([a.id, b.id, c.id]);
@@ -802,17 +874,21 @@ define([
         pp.isDraggable = true;
 
         attr = Type.copyAttributes(attributes, board.options, 'parallel');
+        // line creator also calls addChild
         pl = board.create('line', [p, pp], attr);
 
         pl.elType = 'parallel';
         pl.subs = {
             point: pp
         };
+
         pl.inherits.push(pp);
         pl.setParents([parents[0].id, parents[1].id]);
         if (parents.length === 3) {
             pl.addParents(parents[2].id);
         }
+
+        // p.addChild(pl);
 
         /**
          * Helper point used to create the parallel line. This point lies on the line at infinity, hence it's not visible,
@@ -982,44 +1058,131 @@ define([
                 l = board.create('line', [
                     function () {
                         var i = Math.floor(p.position),
-                            lbda = p.position - i;
+                            lbda = p.position - i,
+                            p1, p2, t, A, B, C, D, dx, dy, d;
 
-                        if (i === c.numberPoints - 1) {
-                            i -= 1;
-                            lbda = 1;
+                        if (c.bezierdegree === 1) {
+                            if (i === c.numberPoints - 1) {
+                                i -= 1;
+                                lbda = 1;
+                            }
+                        } else if (c.bezierDegree === 3) {
+                            // i is start of the Bezier segment
+                            // t is the position in the Bezier segment
+                            i = Math.floor(p.position * (c.numberPoints - 1) / 3) * 3;
+                            t = (p.position * (c.numberPoints - 1) - i) / 3;
+                            if (i >= c.numberPoints - 1) {
+                                i = c.numberPoints - 4;
+                                t = 1;
+                            }
+                        } else {
+                            return 0;
                         }
 
                         if (i < 0) {
                             return 1;
                         }
 
-                        return (c.Y(i) + lbda * (c.Y(i + 1) - c.Y(i))) * (c.Y(i) - c.Y(i + 1)) - (c.X(i) + lbda * (c.X(i + 1) - c.X(i))) * (c.X(i + 1) - c.X(i));
+                        if (c.bezierDegree === 1) {
+                            return (c.Y(i) + lbda * (c.Y(i + 1) - c.Y(i))) * (c.Y(i) - c.Y(i + 1)) - (c.X(i) + lbda * (c.X(i + 1) - c.X(i))) * (c.X(i + 1) - c.X(i));
+                        } else {
+                            A = c.points[i].usrCoords;
+                            B = c.points[i + 1].usrCoords;
+                            C = c.points[i + 2].usrCoords;
+                            D = c.points[i + 3].usrCoords;
+                            dx = (1 - t) * (1 - t) * (B[1] - A[1]) + 2 * (1 - t) * t * (C[1] - B[1]) + t * t * (D[1]- C[1]);
+                            dy = (1 - t) * (1 - t) * (B[2] - A[2]) + 2 * (1 - t) * t * (C[2] - B[2]) + t * t * (D[2]- C[2]);
+                            d = Math.sqrt(dx * dx + dy * dy);
+                            dx /= d;
+                            dy /= d;
+                            p1 = p.coords.usrCoords;
+                            p2 = [1, p1[1] - dy, p1[2] + dx];
+                            return p1[2] * p2[1] - p1[1] * p2[2];
+                        }
                     },
                     function () {
-                        var i = Math.floor(p.position);
+                        var i = Math.floor(p.position),
+                            p1, p2, t, A, B, C, D, dx, dy, d;
 
-                        if (i === c.numberPoints - 1) {
-                            i -= 1;
+                        if (c.bezierdegree === 1) {
+                            if (i === c.numberPoints - 1) {
+                                i -= 1;
+                            }
+                        } else if (c.bezierDegree === 3) {
+                            // i is start of the Bezier segment
+                            // t is the position in the Bezier segment
+                            i = Math.floor(p.position * (c.numberPoints - 1) / 3) * 3;
+                            t = (p.position * (c.numberPoints - 1) - i) / 3;
+                            if (i >= c.numberPoints - 1) {
+                                i = c.numberPoints - 4;
+                                t = 1;
+                            }
+                        } else {
+                            return 0;
+                        }
+
+                        if (i < 0) {
+                            return 0;
+                        }
+                        if (c.bezierDegree === 1) {
+                            return c.X(i + 1) - c.X(i);
+                        } else {
+                            A = c.points[i].usrCoords;
+                            B = c.points[i + 1].usrCoords;
+                            C = c.points[i + 2].usrCoords;
+                            D = c.points[i + 3].usrCoords;
+                            dx = (1 - t) * (1 - t) * (B[1] - A[1]) + 2 * (1 - t) * t * (C[1] - B[1]) + t * t * (D[1]- C[1]);
+                            dy = (1 - t) * (1 - t) * (B[2] - A[2]) + 2 * (1 - t) * t * (C[2] - B[2]) + t * t * (D[2]- C[2]);
+                            d = Math.sqrt(dx * dx + dy * dy);
+                            dx /= d;
+                            dy /= d;
+                            p1 = p.coords.usrCoords;
+                            p2 = [1, p1[1] - dy, p1[2] + dx];
+                            return p2[2] - p1[2];
+                        }
+
+                    },
+                    function () {
+                        var i = Math.floor(p.position),
+                            p1, p2, t, A, B, C, D, dx, dy, d;
+
+                        if (c.bezierdegree === 1) {
+                            if (i === c.numberPoints - 1) {
+                                i -= 1;
+                            }
+                        } else if (c.bezierDegree === 3) {
+                            // i is start of the Bezier segment
+                            // t is the position in the Bezier segment
+                            i = Math.floor(p.position * (c.numberPoints - 1) / 3) * 3;
+                            t = (p.position * (c.numberPoints - 1) - i) / 3;
+                            if (i >= c.numberPoints - 1) {
+                                i = c.numberPoints - 4;
+                                t = 1;
+                            }
+                        } else {
+                            return 0;
                         }
 
                         if (i < 0) {
                             return 0;
                         }
 
-                        return c.X(i + 1) - c.X(i);
-                    },
-                    function () {
-                        var i = Math.floor(p.position);
-
-                        if (i === c.numberPoints - 1) {
-                            i -= 1;
+                        if (c.bezierDegree === 1) {
+                            return c.Y(i + 1) - c.Y(i);
+                        } else {
+                            A = c.points[i].usrCoords;
+                            B = c.points[i + 1].usrCoords;
+                            C = c.points[i + 2].usrCoords;
+                            D = c.points[i + 3].usrCoords;
+                            dx = (1 - t) * (1 - t) * (B[1] - A[1]) + 2 * (1 - t) * t * (C[1] - B[1]) + t * t * (D[1]- C[1]);
+                            dy = (1 - t) * (1 - t) * (B[2] - A[2]) + 2 * (1 - t) * t * (C[2] - B[2]) + t * t * (D[2]- C[2]);
+                            d = Math.sqrt(dx * dx + dy * dy);
+                            dx /= d;
+                            dy /= d;
+                            p1 = p.coords.usrCoords;
+                            p2 = [1, p1[1] - dy, p1[2] + dx];
+                            return p1[1] - p2[1];
                         }
-
-                        if (i < 0) {
-                            return 0;
-                        }
-
-                        return c.Y(i + 1) - c.Y(i);
                     }
                 ], attr);
             }
@@ -1116,6 +1279,14 @@ define([
         l.elType = 'normal';
         l.setParents(parents);
 
+        if (Type.exists(p._is_new)) {
+            l.addChild(p);
+            delete p._is_new;
+        } else {
+            p.addChild(l);
+        }
+        c.addChild(l);
+
         return l;
     };
 
@@ -1165,7 +1336,12 @@ define([
 
             for (i = 0; i < 3; i++) {
                 // required for algorithm requiring dependencies between elements
-                parents[i].addChild(p);
+                if (Type.exists(parents[i]._is_new)) {
+                    p.addChild(parents[i]);
+                    delete parents[i]._is_new;
+                } else {
+                    parents[i].addChild(p);
+                }
             }
 
             if (!Type.exists(attributes.layer)) {
@@ -1452,7 +1628,12 @@ define([
             ], attributes);
 
             for (i = 0; i < 3; i++) {
-                parents[i].addChild(p);
+                if (Type.exists(parents[i]._is_new)) {
+                    p.addChild(parents[i]);
+                    delete parents[i]._is_new;
+                } else {
+                    parents[i].addChild(p);
+                }
             }
 
             p.elType = 'circumcenter';
@@ -1518,7 +1699,7 @@ define([
      * </script><pre>
      */
     JXG.createIncenter = function (board, parents, attributes) {
-        var p, A, B, C;
+        var p, A, B, C, i;
 
         parents = Type.providePoints(board, parents, attributes, 'point');
         if (parents.length >= 3 && Type.isPoint(parents[0]) && Type.isPoint(parents[1]) && Type.isPoint(parents[2])) {
@@ -1535,6 +1716,15 @@ define([
 
                 return new Coords(Const.COORDS_BY_USER, [(a * A.X() + b * B.X() + c * C.X()) / (a + b + c), (a * A.Y() + b * B.Y() + c * C.Y()) / (a + b + c)], board);
             }], attributes);
+
+            for (i = 0; i < 3; i++) {
+                if (Type.exists(parents[i]._is_new)) {
+                    p.addChild(parents[i]);
+                    delete parents[i]._is_new;
+                } else {
+                    parents[i].addChild(p);
+                }
+            }
 
             p.elType = 'incenter';
             p.setParents(parents);
@@ -1573,7 +1763,7 @@ define([
      * </script><pre>
      */
     JXG.createCircumcircle = function (board, parents, attributes) {
-        var p, c, attr;
+        var p, c, attr, i;
 
         parents = Type.providePoints(board, parents, attributes, 'point');
         if (parents === false) {
@@ -1600,6 +1790,15 @@ define([
                 center: p
             };
             c.inherits.push(c);
+            for (i = 0; i < 3; i++) {
+                if (Type.exists(parents[i]._is_new)) {
+                    c.addChild(parents[i]);
+                    delete parents[i]._is_new;
+                } else {
+                    parents[i].addChild(c);
+                }
+            }
+
         } catch (e) {
             throw new Error("JSXGraph: Can't create circumcircle with parent types '" +
                 (typeof parents[0]) + "', '" + (typeof parents[1]) + "' and '" + (typeof parents[2]) + "'." +
@@ -1637,7 +1836,7 @@ define([
      * </script><pre>
      */
     JXG.createIncircle = function (board, parents, attributes) {
-        var p, c, attr;
+        var i, p, c, attr;
 
         parents = Type.providePoints(board, parents, attributes, 'point');
         if (parents === false) {
@@ -1666,6 +1865,14 @@ define([
 
             c.elType = 'incircle';
             c.setParents(parents);
+            for (i = 0; i < 3; i++) {
+                if (Type.exists(parents[i]._is_new)) {
+                    c.addChild(parents[i]);
+                    delete parents[i]._is_new;
+                } else {
+                    parents[i].addChild(c);
+                }
+            }
 
             /**
              * The center of the incircle
@@ -1845,8 +2052,14 @@ define([
             throw new Error("JSXGraph: Can't create reflected element with parent types '" +
                 (typeof parents[0]) + "' and '" + (typeof parents[1]) + "'." + errStr);
         }
-        //org.addChild(r);
+        if (Type.exists(org._is_new)) {
+            r.addChild(org);
+            delete org._is_new;
+        } else {
+            // org.addChild(r);
+        }
         l.addChild(r);
+
         r.elType = 'reflection';
         r.addParents(l);
         r.prepareUpdate().update(); //.updateVisibility(Type.evaluate(r.visProp.visible)).updateRenderer();
@@ -2020,8 +2233,14 @@ define([
                 (typeof parents[0]) + "' and '" + (typeof parents[1]) + "'." + errStr);
         }
 
-        //org.addChild(r);
+        if (Type.exists(org._is_new)) {
+            r.addChild(org);
+            delete org._is_new;
+        } else {
+            // org.addChild(r);
+        }
         m.addChild(r);
+
         r.elType = 'mirrorelement';
         r.addParents(m);
         r.prepareUpdate().update();
@@ -2075,7 +2294,7 @@ define([
      * within the interval <tt>i</tt>.
      * @example
      * var c1 = board.create('functiongraph', [function (t) { return t*t*t; }]);
-     * var i1 = board.create('integral', [[-1.0, 4.0], c1]);
+     * var i1 = board.create('integral', [[-2.0, 2.0], c1]);
      * </pre><div class="jxgbox" id="JXGd45d7188-6624-4d6e-bebb-1efa2a305c8a" style="width: 400px; height: 400px;"></div>
      * <script type="text/javascript">
      *   var intex1_board = JXG.JSXGraph.initBoard('JXGd45d7188-6624-4d6e-bebb-1efa2a305c8a', {boundingbox: [-5, 5, 5, -5], axis: true, showcopyright: false, shownavigation: false});
@@ -2426,7 +2645,10 @@ define([
         c.elType = 'grid';
         c.type = Const.OBJECT_TYPE_GRID;
 
-        c.updateDataArray = function () {
+        /**
+         * @ignore
+         */
+         c.updateDataArray = function () {
             var start, end, i, topLeft, bottomRight,
                 gridX = Type.evaluate(this.visProp.gridx),
                 gridY = Type.evaluate(this.visProp.gridy);
@@ -2707,7 +2929,7 @@ define([
                 this.dataX = [];
                 this.dataY = [];
                 len = parents[0].points.length;
-                if (len == 0) {
+                if (len === 0) {
                     return;
                 }
 

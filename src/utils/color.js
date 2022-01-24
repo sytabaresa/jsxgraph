@@ -45,7 +45,8 @@
  * Stoyan Stefanov <sstoo@gmail.com> (see http://www.phpied.com/rgb-color-parser-in-javascript/)
  */
 
-define(['jxg', 'utils/type', 'math/math'], function (JXG, Type, Mat) {
+define(['jxg', 'utils/type', 'math/math'],
+    function (JXG, Type, Mat) {
 
     "use strict";
 
@@ -198,9 +199,10 @@ define(['jxg', 'utils/type', 'math/math'], function (JXG, Type, Mat) {
             yellow: 'ffff00',
             yellowgreen: '9acd32'
         },
+
         // array of color definition objects
         colorDefs = [{
-            re: /^\s*rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([\d\.]{1,3})\s*\)\s*$/,
+            re: /^\s*rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([\d.]{1,3})\s*\)\s*$/,
             example: ['rgba(123, 234, 45, 0.5)', 'rgba(255,234,245,1.0)'],
             process: function (bits) {
                 return [
@@ -871,6 +873,149 @@ define(['jxg', 'utils/type', 'math/math'], function (JXG, Type, Mat) {
         // if not, return lightColor.
         return lightColor;
     };
+
+    /**
+     * Use the color scheme of JSXGraph up to version 1.3.2.
+     * This method has to be called before JXG.JSXGraph.initBoard();
+     *
+     * @see JXG.palette
+     * @see JXG.paletteWong
+     *
+     * @example
+     *
+     * JXG.setClassicColors();
+     * var board = JXG.JSXGraph.initBoard('jxgbox', {boundingbox: [-5, 5, 5,-5]});
+     *
+     */
+    JXG.setClassicColors = function() {
+        JXG.Options.elements.strokeColor = 'blue';
+        JXG.Options.elements.fillColor = 'red';
+        JXG.Options.hatch.strokeColor = 'blue';
+        JXG.Options.angle.fillColor = '#ff7f00';
+        JXG.Options.angle.highlightFillColor = '#ff7f00';
+        JXG.Options.angle.strokeColor = '#ff7f00';
+        JXG.Options.angle.label.strokeColor = 'blue';
+        JXG.Options.arc.strokeColor = 'blue';
+        JXG.Options.circle.center.fillColor = 'red';
+        JXG.Options.circle.center.strokeColor = 'blue';
+        JXG.Options.circumcircle.strokeColor = 'blue';
+        JXG.Options.circumcircle.center.fillColor = 'red';
+        JXG.Options.circumcircle.center.strokeColor = 'blue';
+        JXG.Options.circumcirclearc.strokeColor = 'blue';
+        JXG.Options.circumcirclesector.strokeColor = 'blue';
+        JXG.Options.circumcirclesector.fillColor = 'green';
+        JXG.Options.circumcirclesector.highlightFillColor = 'green';
+        JXG.Options.conic.strokeColor = 'blue';
+        JXG.Options.curve.strokeColor = 'blue';
+        JXG.Options.incircle.strokeColor = 'blue';
+        JXG.Options.incircle.center.fillColor = 'red';
+        JXG.Options.incircle.center.strokeColor = 'blue';
+        JXG.Options.inequality.fillColor = 'red';
+        JXG.Options.integral.fillColor = 'red';
+        JXG.Options.integral.curveLeft.color = 'red';
+        JXG.Options.integral.curveRight.color = 'red';
+        JXG.Options.line.strokeColor = 'blue';
+        JXG.Options.point.fillColor = 'red';
+        JXG.Options.point.strokeColor = 'red';
+        JXG.Options.polygon.fillColor = 'green';
+        JXG.Options.polygon.highlightFillColor = 'green';
+        JXG.Options.polygon.vertices.strokeColor = 'red';
+        JXG.Options.polygon.vertices.fillColor = 'red';
+        JXG.Options.regularpolygon.fillColor = 'green';
+        JXG.Options.regularpolygon.highlightFillColor = 'green';
+        JXG.Options.regularpolygon.vertices.strokeColor = 'red';
+        JXG.Options.regularpolygon.vertices.fillColor = 'red';
+        JXG.Options.riemannsum.fillColor = 'yellow';
+        JXG.Options.sector.fillColor = 'green';
+        JXG.Options.sector.highlightFillColor = 'green';
+        JXG.Options.semicircle.center.fillColor = 'red';
+        JXG.Options.semicircle.center.strokeColor = 'blue';
+        JXG.Options.slopetriangle.fillColor = 'red';
+        JXG.Options.slopetriangle.highlightFillColor = 'red';
+        JXG.Options.turtle.arrow.strokeColor = 'blue';
+    };
+
+    JXG.extend(JXG, /** @lends JXG */ {
+        /**
+         * Bang Wong color palette,
+         * optimized for various type
+         * of color blindness.
+         * It contains values for
+         * <ul>
+         * <li> 'black'
+         * <li> 'orange'
+         * <li> 'skyblue'
+         * <li> 'bluishgreen'
+         * <li> 'yellow'
+         * <li> 'darkblue'
+         * <li> 'vermillion'
+         * <li> 'reddishpurple'
+         * </ul>
+         *
+         * As substitutes for standard colors, it contains the following aliases:
+         *
+         * <ul>
+         * <li> black (= #000000)
+         * <li> blue (= darkblue)
+         * <li> green (= bluishgreen)
+         * <li> purple (= reddishpurple)
+         * <li> red (= vermillion)
+         * <li> white (= #ffffff)
+         * </ul>
+         *
+         * See <a href="https://www.nature.com/articles/nmeth.1618">Bang Wong: "Points of view: Color blindness"</a>
+         * and
+         * <a href="https://davidmathlogic.com/colorblind/">https://davidmathlogic.com/colorblind/</a>.
+         *
+         * @name JXG.paletteWong
+         * @type Object
+         * @see JXG.palette
+         * @example
+         * var p = board.create('line', [[-1, 1], [2, -3]], {strokeColor: JXG.paletteWong.yellow});
+         */
+        paletteWong: {
+            black: '#000000',
+            orange: '#E69F00',
+            skyblue: '#56B4E9',
+            bluishgreen: '#009E73',
+            yellow: '#F0E442',
+            darkblue: '#0072B2',
+            vermillion: '#D55E00',
+            reddishpurple: '#CC79A7',
+
+            blue: '#0072B2',
+            red: '#D55E00',   // vermillion
+            green: '#009E73', // bluishgreen
+            purple: '#CC79A7', // reddishpurple
+            white: '#ffffff'
+        },
+
+    });
+
+    /**
+     * Default color palette.
+     * Contains at least color values for
+     * <ul>
+     * <li> black
+     * <li> blue
+     * <li> green
+     * <li> purple
+     * <li> red
+     * <li> white
+     * <li> yellow
+     * </ul>
+     *
+     * @name JXG.palette
+     * @type Object
+     * @default JXG.paletteWong
+     * @see JXG.paletteWong
+     *
+     * @example
+     *
+     * var p = board.create('line', [[-1, 1], [2, -3]], {strokeColor: JXG.palette.yellow});
+     *
+     */
+    JXG.palette = JXG.paletteWong;
 
     return JXG;
 });

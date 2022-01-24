@@ -46,8 +46,8 @@
  */
 
 define([
-    'jxg', 'base/constants', 'base/coords', 'math/statistics', 'math/geometry', 'utils/type', 'base/element', 'base/line', 'base/transformation'
-], function (JXG, Const, Coords, Statistics, Geometry, Type, GeometryElement, Line, Transform) {
+    'jxg', 'base/constants', 'base/coords', 'math/statistics', 'math/geometry', 'utils/type', 'base/element'
+], function (JXG, Const, Coords, Statistics, Geometry, Type, GeometryElement) {
 
     "use strict";
 
@@ -121,9 +121,10 @@ define([
         // This needs to be done BEFORE the points get this polygon added in their descendants list
         this.id = this.board.setId(this, 'Py');
 
-        // Add dependencies:
-        // - Add polygon as child to an existing point
-        // - Add newly created points (supplied as coordinate arrays) as children to the polygon
+        // Add dependencies: either
+        // - add polygon as child to an existing point
+        // or
+        // - add  points (supplied as coordinate arrays by the user and created by Type.providePoints) as children to the polygon
         for (i = 0; i < this.vertices.length - 1; i++) {
             p = this.board.select(this.vertices[i]);
             if (Type.exists(p._is_new)) {
@@ -162,6 +163,72 @@ define([
     JXG.Polygon.prototype = new GeometryElement();
 
     JXG.extend(JXG.Polygon.prototype, /** @lends JXG.Polygon.prototype */ {
+
+        /**
+         * Decides if a point (x,y) is inside of the polygon.
+         * Implements W. Randolf Franklin's pnpoly method.
+         *
+         * See <a href="https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html">https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html</a>.
+         *
+         * @param {Number} x_in x-coordinate (screen or user coordinates)
+         * @param {Number} y_in y-coordinate (screen or user coordinates)
+         * @param {Number} coord_type (Optional) the type of coordinates used here.
+         *   Possible values are <b>JXG.COORDS_BY_USER</b> and <b>JXG.COORDS_BY_SCREEN</b>.
+         *   Default value is JXG.COORDS_BY_SCREEN
+         *
+         * @returns {Boolean} if (x,y) is inside of the polygon.
+         * @example
+         * var pol = board.create('polygon', [[-1,2], [2,2], [-1,4]]);
+         * var p = board.create('point', [4, 3]);
+         * var txt = board.create('text', [-1, 0.5, function() {
+         *   return 'Point A is inside of the polygon = ' +
+         *     pol.pnpoly(p.X(), p.Y(), JXG.COORDS_BY_USER);
+         * }]);
+         *
+         * </pre><div id="JXG7f96aec7-4e3d-4ffc-a3f5-d3f967b6691c" class="jxgbox" style="width: 300px; height: 300px;"></div>
+         * <script type="text/javascript">
+         *     (function() {
+         *         var board = JXG.JSXGraph.initBoard('JXG7f96aec7-4e3d-4ffc-a3f5-d3f967b6691c',
+         *             {boundingbox: [-2, 5, 5,-2], axis: true, showcopyright: false, shownavigation: false});
+         *     var pol = board.create('polygon', [[-1,2], [2,2], [-1,4]]);
+         *     var p = board.create('point', [4, 3]);
+         *     var txt = board.create('text', [-1, 0.5, function() {
+         *     		return 'Point A is inside of the polygon = ' + pol.pnpoly(p.X(), p.Y(), JXG.COORDS_BY_USER);
+         *     }]);
+         *
+         *     })();
+         *
+         * </script><pre>
+         *
+         */
+        pnpoly: function(x_in, y_in, coord_type) {
+            var i, j, len,
+                x, y, crds,
+                v = this.vertices,
+                isIn = false;
+
+            if (coord_type === Const.COORDS_BY_USER) {
+                crds = new Coords(Const.COORDS_BY_USER, [x_in, y_in], this.board);
+                x = crds.scrCoords[1];
+                y = crds.scrCoords[2];
+            } else {
+                x = x_in;
+                y = y_in;
+            }
+
+            len = this.vertices.length;
+            for (i = 0, j = len - 2; i < len - 1; j = i++) {
+                if (((v[i].coords.scrCoords[2] > y) !== (v[j].coords.scrCoords[2] > y)) &&
+                    (x < (v[j].coords.scrCoords[1] - v[i].coords.scrCoords[1]) *
+                    (y - v[i].coords.scrCoords[2]) / (v[j].coords.scrCoords[2] - v[i].coords.scrCoords[2]) + v[i].coords.scrCoords[1])
+                   ) {
+                    isIn = !isIn;
+                }
+            }
+
+            return isIn;
+        },
+
         /**
          * Checks whether (x,y) is near the polygon.
          * @param {Number} x Coordinate in x direction, screen coordinates.
@@ -169,22 +236,11 @@ define([
          * @returns {Boolean} Returns true, if (x,y) is inside or at the boundary the polygon, otherwise false.
          */
         hasPoint: function (x, y) {
-
-            var i, j, len, c = false;
+            var i, len;
 
             if (Type.evaluate(this.visProp.hasinnerpoints)) {
                 // All points of the polygon trigger hasPoint: inner and boundary points
-                len = this.vertices.length;
-                // See http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
-                // for a reference of Jordan method
-                for (i = 0, j = len - 2; i < len - 1; j = i++) {
-                    if (((this.vertices[i].coords.scrCoords[2] > y) !== (this.vertices[j].coords.scrCoords[2] > y)) &&
-                            (x < (this.vertices[j].coords.scrCoords[1] - this.vertices[i].coords.scrCoords[1]) * (y - this.vertices[i].coords.scrCoords[2]) /
-                            (this.vertices[j].coords.scrCoords[2] - this.vertices[i].coords.scrCoords[2]) + this.vertices[i].coords.scrCoords[1])) {
-                        c = !c;
-                    }
-                }
-                if (c) {
+                if (this.pnpoly(x, y)) {
                     return true;
                 }
             }
@@ -196,12 +252,11 @@ define([
             len = this.borders.length;
             for (i = 0; i < len; i++) {
                 if (this.borders[i].hasPoint(x, y)) {
-                    c = true;
-                    break;
+                    return true;
                 }
             }
 
-            return c;
+            return false;
         },
 
         /**
@@ -460,7 +515,7 @@ define([
             return box;
         },
 
-        // already documented in GeometryElement
+        // Already documented in GeometryElement
         bounds: function () {
             return this.boundingBox();
         },
@@ -468,6 +523,8 @@ define([
         /**
          * This method removes the SVG or VML nodes of the lines and the filled area from the renderer, to remove
          * the object completely you should use {@link JXG.Board#removeObject}.
+         *
+         * @private
          */
         remove: function () {
             var i;
@@ -482,6 +539,7 @@ define([
         /**
          * Finds the index to a given point reference.
          * @param {JXG.Point} p Reference to an element of type {@link JXG.Point}
+         * @returns {Number} Index of the point or -1.
          */
         findPoint: function (p) {
             var i;

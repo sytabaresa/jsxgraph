@@ -4,13 +4,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable max-len */
 /* eslint-disable @typescript-eslint/prefer-namespace-keyword */
-// Type definitions for JSXGraph 1.2.3
+//
+// Type definitions for JSXGraph 1.4.x
 // Project: https://jsxgraph.org
 // Definitions by: David Holmes https://github.com/geometryzen
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 //
-// Copyright 2015-2021 David Holmes, https://github.com/geometryzen
-// JSXGraph 1.2.3
+// Copyright 2015-2022 David Holmes, https://github.com/geometryzen
 //
 
 /**
@@ -20,11 +20,15 @@ declare module JXG {
     /**
      *
      */
-    export const COORDS_BY_SCREEN: number;
+    export type CoordType = 1 | 2
     /**
-     *
+     * User coordinates relative to the coordinates system defined by the bounding box.
      */
-    export const COORDS_BY_USER: number;
+    export const COORDS_BY_USER: 0x0001;
+    /**
+     * Screen coordinates in pixel relative to the upper left corner of the div element.
+     */
+    export const COORDS_BY_SCREEN: 0x0002;
     /**
      * A composition is a simple container that manages none or more GeometryElements.
      */
@@ -81,16 +85,68 @@ declare module JXG {
          */
         updateRenderer(): void
     }
+
     /**
-     *
+     * This is the Coordinates class. All members a coordinate has to provide are defined here.
      */
     export class Coords {
-        constructor(size: number, coords: number[], board: Board);
         /**
-         *
+         * Constructs a new Coordinates object.
+         * @param method The type of coordinates given by the user. Accepted values are COORDS_BY_SCREEN and COORDS_BY_USER.
+         * @param coordinates An array of affine coordinates.
+         * @param board A reference to a board.
+         * @param emitter If true, this coordinates object will emit update events every time the coordinates are set. Default is true.
          */
-        usrCoords: number[];
+        constructor(method: CoordType, coordinates: [number, number, number], board: Board, emitter?: boolean);
+        /**
+         * Stores the board the object is used on.
+         */
+        board: Board;
+        /**
+         * If true, this coordinates object will emit update events every time the coordinates are set.
+         */
+        emitter: boolean;
+        /**
+         * Stores coordinates for screen view as homogeneous coordinates.
+         */
+        scrCoords: [z: number, x: number, y: number];
+        /**
+         * Stores coordinates for user view as homogeneous coordinates.
+         */
+        usrCoords: [number, number, number];
+        /**
+         * Copy array, either scrCoords or usrCoords. Uses slice() in case of standard arrays and set() in case of typed arrays.
+         * @param obj Either 'scrCoords' for COORDS_BY_SCREEN coordinates or 'usrCoords' for COORDS_BY_USER coordinates.
+         * @param offset The index to begin the copying from. Defaults to 0 if not given.
+         */
+        copy(obj: 'scrCoords' | 'usrCoords', offset?: number): number[];
+        copy(obj: 'scrCoords' | 'usrCoords'): [number, number, number];
+        copy(obj: 'scrCoords' | 'usrCoords', offset: 0): [number, number, number];
+        copy(obj: 'scrCoords' | 'usrCoords', offset: 1): [number, number];
+        copy(obj: 'scrCoords' | 'usrCoords', offset: 2): [number];
+        /**
+         * Calculate distance of one point to another.
+         * @param method The type of coordinates used here. Possible values are JXG.COORDS_BY_USER and JXG.COORDS_BY_SCREEN.
+         * @param coordinates The Coords object to which the distance is calculated.
+         * @returns The distance.
+         */
+        distance(method: CoordType, coordinates: Coords): number;
+        /**
+         * Set coordinates by either user coordinates or screen coordinates and recalculate the other one.
+         * @param method The type of coordinates used here. Possible values are COORDS_BY_USER and COORDS_BY_SCREEN.
+         * @param coordinates An array of affine coordinates the Coords object is set to.
+         * @param doRound flag If true or null round the coordinates in usr2screen. This is used in smooth curve plotting. Internet Explorer needs rounded coordinates. If doRound==false we have to round in updatePathString.
+         * @param noevent
+         * @returns A reference to this coords object.
+         */
+        setCoordinates(method: CoordType, coordinates: [number, number, number], doRound?: boolean, noevent?: boolean): this;
+        /**
+         * Test if one of the usrCoords is NaN or the coordinates are infinite.
+         * @returns true if the coordinates are finite, false otherwise.
+         */
+        isReal(): boolean;
     }
+
     /**
      * A JessieCode object provides an interface to the parser and stores all variables and objects used within a JessieCode script.
      * The optional argument code is interpreted after initializing.
@@ -199,10 +255,10 @@ declare module JXG {
     export function hex2rgb(hex: string): string;
     /**
      * Converts HSV color to RGB color. Based on C Code in "Computer Graphics -- Principles and Practice," Foley et al, 1996, p. 593. See also http://www.efg2.com/Lab/Graphics/Colors/HSV.htm
-     * param H value between 0 and 360
-     * param S value between 0.0 (shade of gray) to 1.0 (pure color)
-     * param V value between 0.0 (black) to 1.0 (white)
-     * return RGB color string
+     * @param H value between 0 and 360
+     * @param S value between 0.0 (shade of gray) to 1.0 (pure color)
+     * @param V value between 0.0 (black) to 1.0 (white)
+     * @returns RGB color string
      */
     export function hsv2rgb(H: number, S: number, V: number): string;
     export function isAndroid(): boolean;
@@ -256,7 +312,7 @@ declare module JXG {
     export function supportsVML();
     export function swap<T>(arr: T[], i: number, j: number): T[];
     export function timedChunk(items: unknown[], process: Function, context: unknown, callback: Function): void;
-    export function toFixed(num: number, precision: number): string;
+    export function toFixed(num: number, digits: number): string;
     export function toFullscreen(wrap_id: string, jsxgraph_id: string, scale?: unknown): void;
     export function toJSON(obj: unknown, noquote?: boolean): string;
     export function trim(str: string): string;
@@ -299,6 +355,12 @@ declare module JXG {
         id: string;
 
         /**
+         * The label subelement (if it is defined).
+         * @see hasLabel
+         */
+        label?: Text;
+
+        /**
          * Not necessarily unique name for the element.
          */
         name: string;
@@ -313,9 +375,12 @@ declare module JXG {
 
         quadraticform: unknown[];
 
-        rendNode: unknown;
+        rendNode: HTMLElement;
 
-        stdform: unknown[];
+        /**
+         * The homogeneous coordinates of the line ([C,A,B] where A*x+B*y+C*z=0).
+         */
+        stdform: [C: number, A: number, B: number];
 
         subs: unknown;
 
@@ -332,11 +397,11 @@ declare module JXG {
         visPropCalc: { [name: string]: unknown };
 
         /**
-         * 
-         * @param board 
-         * @param attributes 
-         * @param type 
-         * @param oclass 
+         *
+         * @param board
+         * @param attributes
+         * @param type
+         * @param oclass
          */
         constructor(board: Board, attributes: GeometryElementAttributes, type: number, oclass: number);
 
@@ -370,10 +435,10 @@ declare module JXG {
         /**
          * Hide the element. It will still exist but not be visible on the board.
          * Alias for "element.setAttribute({visible: false});"
-         * @return Reference to the element
+         * @returns Reference to the element
          */
         hide(): void;
-        
+
         /**
          * Hides the element. It will still exist but not be visible on the board.
          * Alias for JXG.GeometryElement#hide
@@ -384,15 +449,15 @@ declare module JXG {
         /**
          * Register a new event handler.
          * For a list of possible events see documentation of the elements and objects implementing the EventEmitter interface.
-         * param event
-         * param handler
-         * param context The context the handler will be called in, default is the element itself.
+         * @param event
+         * @param handler
+         * @param context The context the handler will be called in, default is the element itself.
          */
         on(event: string, handler: (e: Event) => void, context?: unknown): void;
 
         /**
          * Sets an arbitrary number of attributes.
-         * param attributes An object with attributes.
+         * @param attributes An object with attributes.
          */
         setAttribute(attributes: GeometryElementAttributes): this;
 
@@ -411,13 +476,13 @@ declare module JXG {
 
         /**
          * Updates the element's label text, strips all html.
-         * param text The element label text.
+         * @param text The element label text.
          */
         setLabelText(text: string): string;
 
         /**
          * Updates the element's label text and the element's attribute "name", strips all html.
-         * param name The element name.
+         * @param name The element name.
          */
         setName(name: string): string;
 
@@ -445,15 +510,14 @@ declare module JXG {
          * Moves an element by the difference of two coordinates.
          * @param method The type of coordinates used here. Possible values are JXG.COORDS_BY_USER and JXG.COORDS_BY_SCREEN.
          * @param coords coordinates in screen/user units
-         * @param oldcoords previous coordinates in screen/user units
          * @returns Reference to the element.
          */
-        setPositionDirectly(method: number, coords: number[], oldcoords?: number[]): this;
+        setPositionDirectly(method: number, coords: number[]): this;
 
         /**
          * Make the element visible.
          * Alias for "element.setAttribute({visible: true});"
-         * @return Reference to the element
+         * @returns Reference to the element
          */
         show(): void;
 
@@ -684,7 +748,16 @@ declare module JXG {
         layer?: number;
 
         /**
-         * ???
+         * Precision options for JSXGraph elements.
+         * This attributes takes either the value 'inherit' or an object of the form:
+         * <pre>
+         * precision: {
+         *      touch: 30,
+         *      mouse: 4,
+         *      pen: 4
+         * }
+         * </pre>
+         *
          */
         precision?: PrecisionOptions;
 
@@ -863,9 +936,6 @@ declare module JXG {
          * Starts an animated point movement towards the given coordinates where.
          * The animation is done after time milliseconds.
          * If the second parameter is not given or is equal to 0, setPosition() is called, see #setPosition.
-         * param where Array containing the x and y coordinate of the target location.
-         * param time Number of milliseconds the animation should last.
-         * param options
          * @param where Array containing the x and y coordinate of the target location.
          * @param time Number of milliseconds the animation should last.
          * @param options Optional settings for the animation.
@@ -1105,8 +1175,15 @@ declare module JXG {
          */
         midpoint: Point;
         /**
-         *
+         * Checks whether (x,y) is near the segment.
+         * @param x: Coordinate in x direction, screen coordinates.
+         * @param y: Coordinate in y direction, screen coordinates.
+         * @param start: Optional start index for search on data plots.
          */
+        hasPoint(x: number, y: number, start?: number): boolean;
+        /**
+        *
+        */
         Radius(): number;
     }
 
@@ -1135,7 +1212,9 @@ declare module JXG {
     export interface CircleOptions {
         center?: PointAttributes;
         fillColor?: string;
+        fixed?: boolean;
         hasInnerPoints?: boolean;
+        highlight?: boolean;
         highlightFillColor?: string;
         highlightStrokeColor?: string;
         label?: LabelOptions;
@@ -1260,11 +1339,11 @@ declare module JXG {
         generateTerm(varname: unknown, xterm: unknown, yterm: unknown, mi: unknown, ma: unknown): any;
         /**
          * Checks whether (x,y) is near the curve.
-         * x: Coordinate in x direction, screen coordinates.
-         * y: Coordinate in y direction, screen coordinates.
-         * start: Optional start index for search on data plots.
+         * @param x: Coordinate in x direction, screen coordinates.
+         * @param y: Coordinate in y direction, screen coordinates.
+         * @param start: Optional start index for search on data plots.
          */
-        hasPoint(x: number, y: number, start: number): boolean;
+        hasPoint(x: number, y: number, start?: number): boolean;
         /**
          * Gives the default value of the right bound for the curve.
          * May be overwritten in generateTerm.
@@ -1372,8 +1451,8 @@ declare module JXG {
      */
     export class Group extends GeometryElement {
         /**
-         * 
-         * @param board 
+         *
+         * @param board
          * @param id Unique identifier for this object. If null or an empty string is given, an unique id will be generated by Board.
          * @param name Not necessarily unique name, displayed on the board. If null or an empty string is given, an unique name will be generated.
          * @param objects Array of points to add to this group.
@@ -1402,18 +1481,18 @@ declare module JXG {
         addPoints(objects: Point[]): this;
         /**
          * Adds a point to the set of rotation points of the group. Dragging at one of these points results into a rotation of the whole group around the rotation center of the group {@see JXG.Group#setRotationCenter}.
-         * @param point 
+         * @param point
          */
         addRotationPoint(point: Point): this;
         /**
          * Adds a point to the set of the scale points of the group. Dragging at one of these points results into a scaling of the whole group.
-         * @param point 
+         * @param point
          * @param direction Restricts the directions to be scaled. Possible values are 'x', 'y', 'xy'. Default value is 'xy'.
          */
         addScalePoint(point: Point, direction?: 'x' | 'y' | 'xy'): this;
         /**
          * Adds a point to the set of the translation points of the group. Dragging one of these points results into a translation of the whole group.
-         * @param point 
+         * @param point
          */
         addTranslationPoint(point: Point): this;
         /**
@@ -1422,32 +1501,32 @@ declare module JXG {
         getParents(): string[];
         /**
          * Removes a point from the group.
-         * @param point 
+         * @param point
          */
         removePoint(point: Point): this;
         /**
          * Removes the rotation property from a point of the group.
-         * @param point 
+         * @param point
          */
         removeRotationPoint(point: Point): this;
         /**
          * Removes the scaling property from a point of the group.
-         * @param point 
+         * @param point
          */
         removeScalePoint(point: Point): this;
         /**
          * Removes the translation property from a point of the group.
-         * @param point 
+         * @param point
          */
         removeTranslationPoint(point: Point): this;
         /**
          * Sets ids of elements to the array this.parents. This is a copy of Element.setParents First, this.parents is cleared. See Group#addParents.
-         * @param parents 
+         * @param parents
          */
         setParents(parents: (string | GeometryElement)[]): this;
         /**
          * Sets the center of rotation for the group. This is either a point or the centroid of the group.
-         * @param object 
+         * @param object
          */
         setRotationCenter(object: Point | 'centroid' | [number, number] | (() => [number, number])): this;
         /**
@@ -1457,7 +1536,7 @@ declare module JXG {
         setRotationPoints(objects: Point[]): this;
         /**
          * Sets the center of scaling for the group. This is either a point or the centroid of the group.
-         * @param object 
+         * @param object
          */
         setScaleCenter(object: Point | 'centroid' | [number, number] | (() => [number, number])): this;
         /**
@@ -1515,6 +1594,7 @@ declare module JXG {
     }
 
     export interface InfoboxOptions extends TextOptions {
+        layer?: number;
         needsRegularUpdate?: boolean;
         transitionDuration?: number;
     }
@@ -1533,6 +1613,7 @@ declare module JXG {
         display?: 'internal';
         fixed?: boolean;
         fontSize?: number;
+        highlight?: boolean;
         highlightStrokeColor?: string;
         highlightStrokeOpacity?: number;
         layer?: number;
@@ -1548,6 +1629,7 @@ declare module JXG {
         position?: 'lft' | 'rt' | 'top' | 'bot' | 'ulft' | 'urt' | 'llft' | 'lrt';
         strokeColor?: string;
         strokeOpacity?: number;
+        useMathJax?: boolean;
         visible?: 'inherit' | boolean;
     }
 
@@ -1686,7 +1768,7 @@ declare module JXG {
         /**
          * Set an angle to a prescribed value given in radians.
          * This is only possible if the third point of the angle, i.e. the anglepoint is a free point.
-         * param val Number or Function which returns the size of the angle in Radians.
+         * @param val Number or Function which returns the size of the angle in Radians.
          */
         setAngle(val: number | NumberFunction): Angle;
 
@@ -1773,7 +1855,16 @@ declare module JXG {
         X(): number;
         Y(): number;
         Dist(point: Point): number;
+        /**
+         * Test if the point is on (is incident with) the element.
+         * @param element The geometry element being used as a reference point.
+         * @param tolerance The optional tolerance value. Defaults to Math.eps
+         */
+        isOn(element: GeometryElement, tolerance?: number): boolean;
         setAttribute(attributes: PointAttributes): this;
+        ref: [x: number, y: number] | (() => [x: number, y: number]);
+        scale: [x: number, y: number] | (() => [x: number, y: number]);
+        dp: [x: number, y: number] | (() => [x: number, y: number]);
     }
 
     type FaceType =
@@ -1907,7 +1998,26 @@ declare module JXG {
     }
 
     export interface PointOptions {
-
+        /**
+         *
+         */
+        fixed: boolean;
+        /**
+         *
+         */
+        highlight?: boolean;
+        /**
+         *
+         */
+        snapSizeX: number;
+        /**
+         *
+         */
+        snapSizeY: number;
+        /**
+         *
+         */
+        snapToGrid: boolean;
     }
 
     export interface Perpendicular extends Segment {
@@ -1952,7 +2062,14 @@ declare module JXG {
         remove(): void;
         removePoints(p: Point): this;
         setAttribute(attributes: PolygonAttributes): this;
-        setPositionDirectly(method: number, coords: unknown[], oldcoords: unknown[]): this;
+        /**
+         * Moves an element by the difference of two coordinates.
+         * @param method The type of coordinates used here. Possible values are JXG.COORDS_BY_USER and JXG.COORDS_BY_SCREEN.
+         * @param coords coordinates in screen/user units
+         * @param oldcoords
+         * @returns Reference to this Polygon.
+         */
+        setPositionDirectly(method: number, coords: unknown[], oldcoords?: unknown[]): this;
         showElement(borderless?: boolean): void;
         updateRenderer(): void;
     }
@@ -1987,7 +2104,7 @@ declare module JXG {
         /**
          * Attributes for the polygon border lines.
          */
-        borders?: LineOptions;
+        borders: LineOptions;
         /**
          * If true, moving the mouse over inner points triggers hasPoint.
          */
@@ -2094,7 +2211,7 @@ declare module JXG {
         lastArrow?: boolean | ArrowSpecification;
         label?: LabelOptions;
         moveOnUp?: boolean;
-        precision?: number;
+        digits?: number;
         point1?: PointAttributes;
         point2?: PointAttributes;
         postLabel?: string | StringFunction | number | NumberFunction | null;
@@ -2117,7 +2234,7 @@ declare module JXG {
         lastArrow?: boolean | ArrowSpecification;
         label?: LabelOptions;
         moveOnUp?: boolean;
-        // precision?: number;
+        digits?: number;
         point1?: PointOptions;
         point2?: PointOptions;
         postLabel?: string | StringFunction | number | NumberFunction | null;
@@ -2227,7 +2344,7 @@ declare module JXG {
          */
         lastArrow?: boolean | { type?: number; highlightSize?: number; size?: number };
         /**
-         * 
+         *
          */
         point1?: PointAttributes;
         /**
@@ -2249,6 +2366,10 @@ declare module JXG {
          * Determines whether the line has an arrow at the first defining point.
          */
         firstArrow?: boolean | { type?: number; highlightSize?: number; size?: number };
+        /**
+         *
+         */
+        fixed?: boolean;
         /**
          * Determines whether the line has an arrow at the second defining point.
          */
@@ -2298,7 +2419,7 @@ declare module JXG {
          */
         touchLastPoint?: boolean;
         /**
-         * 
+         *
          */
         margin?: number;
         /**
@@ -2382,7 +2503,7 @@ declare module JXG {
         setAttribute(attributes: ArrowAttributes): this;
     }
     export interface ArrowAttributes extends GeometryElementAttributes {
-        firstArrow?: boolean;
+        firstArrow?: boolean | ArrowSpecification;
         lastArrow?: boolean | ArrowSpecification
     }
     export interface ArrowOptions extends GeometryElementOptions {
@@ -2449,6 +2570,11 @@ declare module JXG {
     }
     export interface MidpointAttributes extends PointAttributes { }
 
+    export interface MinorArc extends Arc {
+        setAttribute(attributes: MinorArcAttributes): this;
+    }
+    export interface MinorArcAttributes extends ArcAttributes { }
+
     /**
      * A mirror element is determined by the reflection of a given point across another given point.
      */
@@ -2491,6 +2617,14 @@ declare module JXG {
      *
      */
     export interface Segment extends Line {
+        /**
+         * Checks whether (x,y) is near the segment.
+         * @param x: Coordinate in x direction, screen coordinates.
+         * @param y: Coordinate in y direction, screen coordinates.
+         * @param start: Optional start index for search on data plots.
+         */
+        hasPoint(x: number, y: number, start?: number): boolean;
+
         setAttribute(attributes: SegmentAttributes): this;
     }
     export interface SegmentAttributes extends LineAttributes { }
@@ -2516,7 +2650,7 @@ declare module JXG {
          */
         anchor?: 'left' | 'middle' | 'right';
         /**
-         * 
+         *
          */
         beautifulScientificTickLabels?: boolean;
         /**
@@ -2579,13 +2713,13 @@ declare module JXG {
         /**
          *
          */
-        precision?: number;
+        digits?: number;
         /**
          *
          */
         scale?: number;
         /**
-         * 
+         *
          */
         scaleSymbol?: string;
         /**
@@ -2597,7 +2731,7 @@ declare module JXG {
          */
         ticksDistance?: number;
         /**
-         * 
+         *
          */
         type?: 'line' | 'string';
         /**
@@ -2627,7 +2761,7 @@ declare module JXG {
         minorTicks?: number;
         minTicksDistance?: number;
         needsRegularUpdate?: boolean;
-        precision?: number;
+        digits?: number;
         scale?: number;
         scaleSymbol?: string;
         strokeColor?: string;
@@ -2651,13 +2785,13 @@ declare module JXG {
         label?: LabelOptions;
         point1?: PointAttributes;
         point2?: PointAttributes;
-        precision?: PrecisionOptions;
+        digits?: number;
         ticks?: TicksAttributes;
         withLabel?: boolean;
         withTicks?: boolean;
     }
     export interface TapemeasureOptions extends LineOptions {
-        precision?: number;
+        digits?: number;
     }
 
     export interface Tracecurve extends Curve { }
@@ -2894,6 +3028,7 @@ declare module JXG {
         | 'chart'
         | 'checkbox'
         | 'circle'
+        | 'comb'
         | 'conic'
         | 'curve'
         | 'ellipse'
@@ -2907,12 +3042,14 @@ declare module JXG {
         | 'input'
         | 'integral'
         | 'line'
+        | 'minorArc'
         | 'plot'
         | 'point'
         | 'polygon'
         | 'reflection'
         | 'riemannsum'
         | 'segment'
+        | 'semicircle'
         | 'slider'
         | 'slopetriangle'
         | 'stepfunction'
@@ -3010,14 +3147,14 @@ declare module JXG {
      */
     export class Board {
         /**
-         * 
-         * @param event 
-         * @param handler 
-         * @param context 
+         *
+         * @param event
+         * @param handler
+         * @param context
          */
         addEvent(event: string, handler: (evt: PointerEvent) => void, context?: {}): {};
         /**
-         * 
+         *
          */
         animationObjects: unknown;
         /**
@@ -3025,11 +3162,11 @@ declare module JXG {
          */
         attr: BoardAttributes;
         /**
-        * 
+        *
         */
         BOARD_MODE_DRAG: number;
         /**
-         * 
+         *
          */
         BOARD_MODE_MOVE_ORIGIN: number;
         /**
@@ -3037,15 +3174,15 @@ declare module JXG {
          */
         BOARD_MODE_NONE: number;
         /**
-         * 
+         *
          */
         BOARD_MODE_ZOOM: number;
         /**
-         * 
+         *
          */
         BOARD_QUALITY_HIGH: number;
         /**
-         * 
+         *
          */
         BOARD_QUALITY_LOW: number;
         /**
@@ -3123,19 +3260,19 @@ declare module JXG {
         hasGrid?: boolean;
         /**
          * A flag which tells if the board registers mouse events.
-         * 
+         *
          * Default is false.
          */
         hasMouseHandlers: boolean;
         /**
          * A flag which tells if the board the mouseUp event registered.
-         * 
+         *
          * Default is false.
          */
         hasMouseUp: boolean;
         /**
          * A flag which stores if the board registered pointer events.
-         * 
+         *
          * Default is false.
          */
         hasPointerHandlers: boolean;
@@ -3156,8 +3293,13 @@ declare module JXG {
          */
         highlightedObjects: { [name: string]: unknown };
         /**
-         * During the update process this is set to false to prevent an endless loop.
+         * Information box close to points in which the coordinates of the point are displayed.
+         * Uses CSS class .JXGinfobox.
          */
+        infobox: Text
+        /**
+        * During the update process this is set to false to prevent an endless loop.
+        */
         inUpdate: boolean;
         /**
          * A flag which tells us if the user is selecting.
@@ -3199,7 +3341,7 @@ declare module JXG {
          */
         objectsList: unknown[];
         /**
-         * 
+         *
          */
         off: Function;
         /**
@@ -3217,12 +3359,12 @@ declare module JXG {
          * If reducedUpdate is set to true then only the dragged element and few (e.g. 2) following elements are updated during mouse move.
          * On mouse up the whole construction is updated.
          * This enables us to be fast even on very slow devices.
-         * 
+         *
          * Default is false.
          */
         reducedUpdate: boolean;
         /**
-         * 
+         *
          */
         removeEvent: Function;
         /**
@@ -3340,350 +3482,392 @@ declare module JXG {
         clickRightArrow(): this;
         clickUpArrow(): this;
         /**
-         * 
+         *
          * @param elementType 'angle'
          * @param parents [centerPoint, radiusPoint, anglePoint] or [line1, line2, coords1 or direction1, coords2 or direction2]
-         * @param attributes 
+         * @param attributes
          */
         create(elementType: 'angle', parents: unknown[], attributes?: AngleAttributes): Angle;
         /**
-         * 
+         *
          * @param elementType 'arc'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'arc', parents: unknown[], attributes?: ArcAttributes): Arc;
         /**
-         * 
+         *
          * @param elementType 'arrow'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'arrow', parents: unknown[], attributes?: ArrowAttributes): Arrow;
         /**
-         * 
+         *
          * @param elementType 'axis'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'axis', parents: unknown[], attributes?: AxisAttributes): Axis;
         /**
-         * 
+         *
          * @param elementType 'bisector'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'bisector', parents: unknown[], attributes?: BisectorAttributes): Bisector;
         /**
-         * 
+         *
          * @param elementType 'button'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'button', parents: unknown[], attributes?: ButtonAttributes): Button;
         /**
-         * 
+         *
          * @param elementType 'cardinalspline'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'cardinalspline', parents: unknown[], attributes?: CardinalsplineAttributes): Cardinalspline;
         /**
-         * 
+         *
          * @param elementType 'chart'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'chart', parents: unknown[], attributes?: ChartAttributes): Chart;
         /**
-         * 
+         *
          * @param elementType 'checkbox'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'checkbox', parents: unknown[], attributes?: CheckboxAttributes): Checkbox;
         /**
-         * 
+         *
          * @param elementType 'circle'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'circle', parents: unknown[], attributes?: CircleAttributes): Circle;
         /**
          * @param elementType 'circumcircle'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'circumcircle', parents: unknown[], attributes?: CircumcircleAttributes): Circumcircle;
         /**
          * @param elementType 'circumcirclearc'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'circumcirclearc', parents: unknown[], attributes?: CircumcircleArcAttributes): CircumcircleArc;
         /**
          * @param elementType 'circumcirclesector'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'circumcirclesector', parents: unknown[], attributes?: CircumcircleSectorAttributes): CircumcircleSector;
         /**
-         * 
+         *
+         * @param elementType 'comb'
+         * @param parents
+         * @param attributes
+         */
+        create(elementType: 'comb', parents: unknown[], attributes?: CombAttributes): Comb;
+        /**
+         *
          * @param elementType 'conic'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'conic', parents: unknown[], attributes?: ConicAttributes): Conic;
         /**
-         * 
-         * @param elementType 'curve'
-         * @param parents 
-         * @param attributes 
-         */
+        *
+        * @param elementType 'curve'
+        * @param parents
+        * @param attributes
+        */
         create(elementType: 'curve', parents: unknown[], attributes?: CurveAttributes): Curve;
         /**
-         * 
+         *
+         * @param elementType 'curvedifference'
+         * @param parents
+         * @param attributes
+         */
+        create(elementType: 'curvedifference', parents: unknown[], attributes?: CurveAttributes): Curve;
+        /**
+         *
+         * @param elementType 'curveintersection'
+         * @param parents
+         * @param attributes
+         */
+        create(elementType: 'curveintersection', parents: unknown[], attributes?: CurveAttributes): Curve;
+        /**
+         *
+         * @param elementType 'curveunion'
+         * @param parents
+         * @param attributes
+         */
+        create(elementType: 'curveunion', parents: unknown[], attributes?: CurveAttributes): Curve;
+        /**
+         *
          * @param elementType 'ellipse'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'ellipse', parents: unknown[], attributes?: EllipseAttributes): Ellipse;
         /**
-         * 
+         *
          * @param elementType 'functiongraph'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'functiongraph', parents: unknown[] | ((x: number) => number), attributes?: FunctiongraphAttributes): Functiongraph;
         /**
-         * 
+         *
          * @param elementType 'glider'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'glider', parents: unknown[], attributes?: GliderAttributes): Glider;
         /**
-         * 
+         *
          * @param elementType 'grid'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'grid', parents: unknown[], attributes?: GridAttributes): Grid;
         /**
-         * 
+         *
          * @param elementType 'group'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'group', parents: unknown[], attributes?: GroupAttributes): Group;
         /**
-         * 
+         *
          * @param elementType 'hatch'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'hatch', parents: unknown[], attributes?: HatchAttributes): Hatch;
         /**
-         * 
+         *
          * @param elementType 'hyperbola'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'hyperbola', parents: unknown[], attributes?: {}): Hyperbola;
         /**
-         * 
+         *
          * @param elementType 'image'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'image', parents: unknown[], attributes?: ImageAttributes): Image;
         /**
-         * 
+         *
          * @param elementType 'input'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'input', parents: unknown[], attributes?: InputAttributes): Input;
         /**
-         * 
+         *
          * @param elementType 'integral'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'integral', parents: unknown[], attributes?: IntegralAttributes): Integral;
         /**
-         * 
+         *
          * @param elementType 'intersection'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'intersection', parents: unknown[], attributes?: IntersectionAttributes): Intersection;
         /**
-         * 
+         *
          * @param elementType 'line'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'line', parents: unknown[], attributes?: LineAttributes): Line;
         /**
-         * 
+         *
          * @param elementType 'metapostspline'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'metapostspline', parents: unknown[], attributes?: MetapostsplineAttributes): Metapostspline;
         /**
-         * 
+         *
          * @param elementType 'midpoint'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'midpoint', parents: unknown[], attributes?: MidpointAttributes): Midpoint;
         /**
-         * 
-         * @param elementType 'mirrorelement'
-         * @param parents 
-         * @param attributes 
+         *
+         * @param elementType 'minorArc'
+         * @param parents
+         * @param attributes
          */
+        create(elementType: 'minorArc', parents: unknown[], attributes?: MinorArcAttributes): MinorArc;
+        /**
+        *
+        * @param elementType 'mirrorelement'
+        * @param parents
+        * @param attributes
+        */
         create(elementType: 'mirrorelement', parents: unknown[], attributes?: MirrorelementAttributes): Mirrorelement;
         /**
-         * 
+         *
          * @param elementType 'normal'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'normal', parents: unknown[], attributes?: NormalAttributes): Normal;
         /**
-         * 
+         *
          * @param elementType 'perpendicular'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'perpendicular', parents: unknown[], attributes?: PerpendicularAttributes): Perpendicular;
         /**
-         * 
+         *
          * @param elementType 'plot'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'plot', parents: unknown[], attributes?: CurveAttributes): Curve;
         /**
-         * 
+         *
          * @param elementType 'point'
          * @param parents [x, y], [z, x, y], and [element, transformation].
-         * @param attributes 
+         * @param attributes
          */
         create(elementType: 'point', parents: unknown[], attributes?: PointAttributes): Point;
         /**
-         * 
+         *
          * @param elementType 'polygon'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'polygon', parents: unknown[], attributes?: PolygonAttributes): Polygon;
         /**
-         * 
+         *
          * @param elementType 'polygonalchain'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'polygonalchain', parents: unknown[], attributes?: PolygonAttributes): Polygon;
         /**
-         * 
+         *
          * @param elementType 'regularpolygon'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'regularpolygon', parents: unknown[], attributes?: PolygonAttributes): Polygon;
         /**
-         * 
+         *
          * @param elementType 'reflection'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'reflection', parents: unknown[], attributes?: ReflectionAttributes): Reflection;
         /**
-         * 
+         *
          * @param elementType 'riemannsum'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'riemannsum', parents: unknown[], attributes?: CurveAttributes): Riemannsum;
         /**
-         * 
+         *
          * @param elementType 'sector'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'sector', parents: unknown[], attributes?: SectorAttributes): Sector;
         /**
-        * 
-        * @param elementType 'segment'
-        * @param parents 
-        * @param attributes 
-        */
+         *
+         * @param elementType 'semicircle'
+         * @param parents
+         * @param attributes
+         */
+        create(elementType: 'semicircle', parents: unknown[], attributes?: SemicircleAttributes): Semicircle;
+        /**
+         *
+         * @param elementType 'segment'
+         * @param parents
+         * @param attributes
+         */
         create(elementType: 'segment', parents: unknown[], attributes?: SegmentAttributes): Segment;
         /**
-         * 
+         *
          * @param elementType 'slider'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'slider', parents: unknown[], attributes?: SliderAttributes): Slider;
         /**
-         * 
+         *
          * @param elementType 'slopetriangle'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'slopetriangle', parents: unknown[], attributes?: SlopetriangleAttributes): Slopetriangle;
         /**
-         * 
+         *
          * @param elementType 'stepfunction'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'stepfunction', parents: unknown[], attributes?: StepfunctionAttributes): Stepfunction;
         /**
-         * 
+         *
          * @param elementType 'tangent'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'tangent', parents: unknown[], attributes?: TangentAttributes): Tangent;
         /**
-         * 
+         *
          * @param elementType 'tapemeasure'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'tapemeasure', parents?: unknown[], attributes?: TapemeasureAttributes): Tapemeasure;
         /**
-         * 
+         *
          * @param elementType 'text'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'text', parents: unknown[], attributes?: TextAttributes): Text;
         /**
-         * 
+         *
          * @param elementType 'ticks'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'ticks', parents: unknown[], attributes?: TicksAttributes): Ticks;
         /**
-         * 
+         *
          * @param elementType 'tracecurve'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'tracecurve', parents: unknown[], attributes?: TracecurveAttributes): Tracecurve;
         /**
-         * 
+         *
          * @param elementType 'transform'
-         * @param parents 
-         * @param attributes 
+         * @param parents
+         * @param attributes
          */
         create(elementType: 'transform', parents: unknown[], attributes?: TransformationAttributes): Transformation;
         /**
@@ -3694,13 +3878,13 @@ declare module JXG {
          */
         create(elementType: 'turtle', parents?: unknown[], attributes?: TurtleAttributes): Turtle;
         /**
-         * @param c1 
-         * @param c2 
-         * @param start_c1 
-         * @param stepsize 
-         * @param direction 
-         * @param time 
-         * @param pointlist 
+         * @param c1
+         * @param c2
+         * @param start_c1
+         * @param stepsize
+         * @param direction
+         * @param time
+         * @param pointlist
          */
         createRoulette(c1: Curve, c2: Curve, start_c1: number, stepsize: number, direction: number, time: number, pointlist: Point[]): unknown;
         /**
@@ -3753,10 +3937,10 @@ declare module JXG {
          * For a list of possible events see documentation of the elements and objects
          * implementing the EventEmitter interface.
          * @method on
-         * param event {string}
-         * param handler {()=>void}
-         * param context [{}] The context the handler will be called in, default is the element itself.
-         * return Reference to the object.
+         * @param event {string}
+         * @param handler {()=>void}
+         * @param context [{}] The context the handler will be called in, default is the element itself.
+         * @returns Reference to the object.
          */
         on(event: string, handler: (evt: PointerEvent) => void, context?: {}): {};
         pointerDownListener(event: unknown, object: unknown): boolean;
@@ -3773,11 +3957,11 @@ declare module JXG {
         removeMouseEventHandlers(): unknown;
         /**
          * Removes object from board and renderer.
-         * 
+         *
          * Performance hints: It is recommended to use the object's id.
          * If many elements are removed, it is best to call board.suspendUpdate() before looping through the elements to be removed and call board.unsuspendUpdate() after the loop.
          * Further, it is advisable to loop in reverse order, i.e. remove the object in reverse order of their creation time.
-         * 
+         *
          * @param object The object to remove or array of objects to be removed. The element(s) is/are given by name, id or a reference.
          * @param saveMethod If true, the algorithm runs through all elements and tests if the element to be deleted is a child element. If yes, it will be removed from the list of child elements. If false (default), the element is removed from the lists of child elements of all its ancestors. This should be much faster.
          * @returns Reference to the board.
@@ -3795,7 +3979,7 @@ declare module JXG {
         /**
         *
         */
-        setBoundingBox(bbox: [number, number, number, number], keepaspectratio?: boolean): this;
+        setBoundingBox(bbox: [number, number, number, number], keepaspectratio?: boolean, setZoom?: string): this;
         setId(object: unknown, type: number): string;
         /**
          *
@@ -3827,7 +4011,7 @@ declare module JXG {
         unsuspendUpdate(): this;
         /**
          * Runs through most elements and calls their update() method and update the conditions.
-         * param drag Element that caused the update.
+         * @param drag Element that caused the update.
          * return Reference to the board
          */
         update(drag?: GeometryElement): this;
@@ -3849,34 +4033,61 @@ declare module JXG {
         zoomAllPoints(): this;
         /**
          * Reset the bounding box and the zoom level to 100% such that a given set of elements is within the board's viewport.
-         * @param elements 
+         * @param elements
          */
         zoomElements(elements: unknown[]): this;
         /**
          * Zooms into the board by the factors board.attr.zoom.factorX and board.attr.zoom.factorY and applies the zoom.
          * The zoom operation is centered at x, y.
-         * @param x 
-         * @param y 
+         * @param x
+         * @param y
          */
         zoomIn(x?: number, y?: number): this;
         /**
          * Zooms out of the board by the factors board.attr.zoom.factorX and board.attr.zoom.factorY and applies the zoom.
          * The zoom operation is centered at x, y.
-         * @param x 
-         * @param y 
+         * @param x
+         * @param y
          */
         zoomOut(x?: number, y?: number): this;
     }
 
     export interface ZoomOptions {
+        /**
+         * Horizontal zoom factor (multiplied to Board.zoomX).
+         */
         factorX?: number;
+        /**
+         * Vertical zoom factor (multiplied to Board.zoomY).
+         */
         factorY?: number;
+        /**
+         * Allow zooming by mouse wheel or by pinch-to-zoom gesture on touch devices.
+         */
         wheel?: boolean;
+        /**
+         * Mouse wheel zooming needs pressing of the Shift key.
+         */
         needShift?: boolean;
+        /**
+         * Minimal values of Board.zoomX and Board.zoomY. Limits zoomOut.
+         */
         min?: number;
+        /**
+         * Maximal values of Board.zoomX and Board.zoomY. Limits zoomIn.
+         */
         max?: number;
+        /**
+         * Allow pinch-to-zoom to zoom only horizontal axis.
+         */
         pinchHorizontal?: boolean;
+        /**
+         * Allow pinch-to-zoom to zoom only vertical axis.
+         */
         pinchVertical?: boolean;
+        /**
+         * Sensitivity (in degrees) for recognizing horizontal or vertical pinch-to-zoom gestures.
+         */
         pinchSensitivity?: number;
     }
 
@@ -4165,7 +4376,7 @@ declare module JXG {
         title: string;
 
         /**
-         *
+         * Control the possibilities for zoom interaction.
          */
         zoom: boolean | ZoomOptions;
 
@@ -4306,6 +4517,7 @@ declare module JXG {
         display?: 'html' | 'internal';
         dragArea?: 'all' | 'small';
         fontSize?: number;
+        highlight?: boolean;
         highlightCssClass?: string;
         highlightCssDefaultStyle?: string;
         highlightCssStyle?: string;
@@ -4348,91 +4560,95 @@ declare module JXG {
 
     export interface JXGOptions {
         // TODO: These should all be XyzOptions, even if XyzOptions extends XyzAttributes (or converse).
-        angle?: AngleOptions;
-        arc?: ArcAttributes;
-        arrow?: ArrowAttributes;
-        axis?: AxisAttributes;
-        bisector?: BisectorAttributes;
-        bisectorlines?: {
+        angle: AngleOptions;
+        arc: ArcAttributes;
+        arrow: ArrowAttributes;
+        axis: AxisAttributes;
+        bisector: BisectorAttributes;
+        bisectorlines: {
             line1?: BisectorAttributes;
             line2?: BisectorAttributes;
         }
-        board?: Partial<BoardAttributes>;
-        button?: ButtonAttributes;
-        cardinalspline?: CardinalsplineAttributes;
-        chart?: ChartAttributes;
-        checkbox?: CheckboxAttributes;
-        circle?: CircleOptions;
-        circumcircle?: CircumcircleOptions;
-        circumcirclearc?: CircumcircleArcOptions;
-        circumcirclesector?: CircumcircleSectorOptions;
-        comb?: CombOptions;
-        conic?: ConicOptions;
-        curve?: CurveOptions;
-        elements?: GeometryElementAttributes;
-        glider?: GliderOptions;
-        grid?: GridOptions;
-        group?: GroupOptions;
-        jc?: {
+        board: Partial<BoardAttributes>;
+        button: ButtonAttributes;
+        cardinalspline: CardinalsplineAttributes;
+        chart: ChartAttributes;
+        checkbox: CheckboxAttributes;
+        circle: CircleOptions;
+        circumcircle: CircumcircleOptions;
+        circumcirclearc: CircumcircleArcOptions;
+        circumcirclesector: CircumcircleSectorOptions;
+        comb: CombOptions;
+        conic: ConicOptions;
+        curve: CurveOptions;
+        elements: GeometryElementAttributes;
+        glider: GliderOptions;
+        grid: GridOptions;
+        group: GroupOptions;
+        jc: {
             enabled?: boolean;
             compile?: boolean;
         };
-        hatch?: HatchAttributes;
-        htmlslider?: SliderOptions;
-        image?: ImageOptions;
-        incircle?: IncircleOptions;
-        inequality?: InequalityOptions;
-        infobox?: InfoboxOptions;
-        integral?: IntegralOptions;
-        input?: InputOptions;
-        intersection?: IntersectionOptions;
-        label?: LabelOptions;
+        hatch: HatchAttributes;
+        htmlslider: SliderOptions;
+        image: ImageOptions;
+        incircle: IncircleOptions;
+        inequality: InequalityOptions;
+        infobox: InfoboxOptions;
+        integral: IntegralOptions;
+        input: InputOptions;
+        intersection: IntersectionOptions;
+        label: LabelOptions;
         /**
          * Default ordering of the layers.
          */
-        layer?: LayerOptions;
-        legend?: LegendOptions;
-        line?: LineOptions;
-        locus?: LocusOptions;
-        metapostspline?: CardinalsplineOptions;
-        mirrorelement?: MirrorelementOptions;
+        layer: LayerOptions;
+        legend: LegendOptions;
+        line: LineOptions;
+        locus: LocusOptions;
+        metapostspline: CardinalsplineOptions;
+        mirrorelement: MirrorelementOptions;
         /**
          * Options that are used by the navigation bar.
          */
-        navbar?: NavbarOptions;
-        normal?: NormalOptions;
-        orthogonalprojection?: OrthogonalprojectionOptions;
-        parallel?: ParallelOptions;
-        perpendicular?: PerpendicularOptions;
-        perpendicularsegment?: PerpendicularSegmentOptions;
-        point?: PointOptions;
-        polygon?: PolygonOptions;
-        polygonalchain?: PolygonalChainOptions;
+        navbar: NavbarOptions;
+        normal: NormalOptions;
+        orthogonalprojection: OrthogonalprojectionOptions;
+        parallel: ParallelOptions;
+        perpendicular: PerpendicularOptions;
+        perpendicularsegment: PerpendicularSegmentOptions;
+        /**
+         *
+         */
+        point: PointOptions;
+        polygon: PolygonOptions;
+        polygonalchain: PolygonalChainOptions;
         /**
          * Precision options.
          */
-        precision?: PrecisionOptions;
-        prescribedangle?: PrescribedAngleOptions;
-        reflection?: ReflectionOptions;
-        regularpolygon?: RegularPolygonOptions;
-        riemannsum?: RiemannsumOptions;
-        sector?: SectorOptions;
-        segment?: SegmentOptions;
-        semicircle?: SemicircleOptions;
-        slider?: SliderOptions;
+        precision: PrecisionOptions;
+        prescribedangle: PrescribedAngleOptions;
+        reflection: ReflectionOptions;
+        regularpolygon: RegularPolygonOptions;
+        riemannsum: RiemannsumOptions;
+        sector: SectorOptions;
+        segment: SegmentOptions;
+        semicircle: SemicircleOptions;
+        slider: SliderOptions;
         /**
          * Abbreviations of properties.
          */
-        shortcuts?: {};
-        slopetriangle?: SlopetriangleOptions;
-        stepfunction?: StepfunctionOptions;
+        shortcuts: {};
+        slopetriangle: SlopetriangleOptions;
+        stepfunction: StepfunctionOptions;
         takeSizeFromFile?: boolean;
-        tapemeasure?: TapemeasureOptions;
-        ticks?: TicksOptions;
-        text?: TextOptions;
-        tracecurve?: TracecurveOptions;
-        turtle?: TurtleOptions;
+        tapemeasure: TapemeasureOptions;
+        ticks: TicksOptions;
+        text: TextOptions;
+        tracecurve: TracecurveOptions;
+        turtle: TurtleOptions;
     }
+
     /**
      *
      */
@@ -4457,21 +4673,65 @@ declare module JXG {
      */
     export interface Math {
         /**
+         * Functional version of binary operator &&
+         * @param a.
+         * @param b.
+         * @returns Boolean value of a && b.
+         */
+        and(a: boolean, b: boolean): boolean;
+        /**
          * eps defines the closeness to zero.
          * If the absolute value of a given number is smaller than eps, it is considered to be equal to zero.
          */
         eps: number;
         /**
-         * Computes the binomial coefficient n over k.
-         * param n
-         * param k
+         * Hyperbolic arc-cosine of a number.
+         *
+         * @param x
          */
+        acosh(x: number): number;
+        /**
+         * Hyperbolic arcsine of a number.
+         *
+         * @param x
+         */
+        asinh(x: number): number;
+        /**
+        * Computes the binomial coefficient n over k.
+        * @param n
+        * @param k
+        */
         binomial(n: number, k: number): number;
         /**
          * Computes the hyperbolic cosine of x.
-         * param x
+         * @param x
          */
         cosh(x: number): number;
+        /**
+         * Functional version of binary operator ===
+         * @param a.
+         * @param b.
+         * @returns Boolean value of a === b.
+         */
+        eq(a: number, b: number): boolean;
+        /**
+         * Error function
+         *
+         * @param x
+         */
+        erf(x: number): number;
+        /**
+         * Complementary error function
+         *
+         * @param x
+         */
+        erfc(x: number): number;
+        /**
+         * Inverse error function
+         *
+         * @param x
+         */
+        erfi(x: number): number;
         /**
          * Compute the factorial of a positive integer. If a non-integer value is given, the fraction will be ignored.
          * @param n
@@ -4479,24 +4739,121 @@ declare module JXG {
          */
         factorial(n: number): number;
         /**
+         * Greatest common divisor (gcd) of two numbers.
+         *
+         * @param a.
+         * @param b.
+         * @returns gcd(a, b) if a and b are numbers, NaN else.
+         */
+        gcd(a: number, b: number): number;
+        /**
+         * Functional version of binary operator >=
+         * @param a.
+         * @param b.
+         * @returns Boolean value of a >= b.
+         */
+        geq(a: number, b: number): boolean;
+        /**
+         * Functional version of binary operator >
+         * @param a.
+         * @param b.
+         * @returns Boolean value of a > b.
+         */
+        gt(a: number, b: number): boolean;
+        /**
          * Compute the inverse of an nxn matrix with Gauss elimination.
          */
         inverse(Ain: number[][]): number[][];
         /**
+         * Least common multiple (lcm) of two numbers.
+         *
+         * @param a.
+         * @param b.
+         * @returns lcm(a, b) if a and b are numbers, NaN else.
+         */
+        lcm(a: number, b: number): number;
+        /**
+         * Functional version of binary operator <=
+         * @param a.
+         * @param b.
+         * @returns Boolean value of a <= b.
+         */
+        leq(a: number, b: number): boolean;
+        /**
+         * Logarithm to base 10.
+         * @param a.
+         * @returns logarithm of a to base 10.
+         */
+        log10(a: number): number;
+        /**
+         * Logarithm to base 2.
+         * @param a.
+         * @returns logarithm of a to base 2.
+         */
+        log2(a: number): number;
+        /**
+         * Functional version of binary operator <
+         * @param a.
+         * @param b.
+         * @returns Boolean value of a < b.
+         */
+        lt(a: number, b: number): boolean;
+        /**
          * Computes the product of the two matrices mat1*mat2.
-         * param mat1 Two dimensional array of numbers.
-         * param mat2 Two dimensional array of numbers.
-         * returns Two dimensional Array of numbers containing result.
+         * @param mat1 Two dimensional array of numbers.
+         * @param mat2 Two dimensional array of numbers.
+         * @returns Two dimensional Array of numbers containing result.
          */
         matMatMult(mat1: number[][], mat2: number[][]): number[][];
         /**
          * Multiplies a vector vec to a matrix mat: mat * vec. The matrix is interpreted by this function as an array of rows.
          * Please note: This function does not check if the dimensions match.
-         * param mat Two dimensional array of numbers. The inner arrays describe the columns, the outer ones the matrix' rows.
-         * param vec Array of numbers.
-         * returns Array of numbers containing the result.
+         * @param mat Two dimensional array of numbers. The inner arrays describe the columns, the outer ones the matrix' rows.
+         * @param vec Array of numbers.
+         * @returns Array of numbers containing the result.
          */
         matVecMult(mat: number[][], vec: number[]): number[];
+        /**
+         * The Javascript implementation of the % operator returns the symmetric modulo.
+         * mod and "%" are both identical if a >= 0 and m >= 0 but the results differ if a or m < 0.
+         * @param a.
+         * @param m.
+         * @returns mathematical modulo a mod m.
+         */
+        mod(a: number, m: number): number;
+        /**
+         * Normal distribution function
+         *
+         * @param x
+         */
+        ndtr(x: number): number;
+        /**
+         * Inverse of normal distribution function
+         *
+         * @param x
+         */
+        ndtri(x: number): number;
+        /**
+         * Functional version of binary operator !==
+         * @param a.
+         * @param b.
+         * @returns Boolean value of a !== b.
+         */
+        neq(a: number, b: number): boolean;
+        /**
+         * Functional version of unary operator !
+         * @param a.
+         * @param b.
+         * @returns Boolean value of !a.
+         */
+        not(a: number): boolean;
+        /**
+         * Functional version of binary operator ||
+         * @param a.
+         * @param b.
+         * @returns Boolean value of a || b.
+         */
+        or(a: boolean, b: boolean): boolean;
         /**
          * Computes base to the power of exponent.
          * @param base
@@ -4504,15 +4861,95 @@ declare module JXG {
          */
         pow(base: number, exponent: number): number;
         /**
+         * Determine the relative difference between two numbers.
+         * @param a.
+         * @param b.
+         * @returns Relative difference between a and b: |a-b| / max(|a|, |b|).
+         */
+        relDif(a: number, b: number): number;
+        /**
+         * Sine hyperbolicus of x.
+         * @param x The number the sine hyperbolicus will be calculated of.
+         * @returns Sine hyperbolicus of the given value.
+         */
+        sinh(x: number): number;
+        /**
+         * A square & multiply algorithm to compute base to the power of exponent.
+         *
+         * @param base.
+         * @param exponent.
+         * @returns base to the power of exponent.
+         */
+        squampow(base: number, exponent: number): number;
+        /**
          * Transposes a matrix given as a two dimensional array.
-         * param M The matrix to be transposed.
-         * returns The transpose of M.
+         * @param M The matrix to be transposed.
+         * @returns The transpose of M.
          */
         transpose(M: number[][]): number[][];
         /**
-         * This namespace contains algorithms for Boolean operations on paths, i.e. intersection, union and difference of paths.
-         * Base is the Greiner-Hormann algorithm.
+         * Functional version of a binary operator xor
+         * @param a.
+         * @param b.
+         * @returns Boolean value of a xor b.
          */
+        xor(a: boolean, b: boolean): boolean;
+
+        /* -------------------------------------------------- */
+        /**
+         * Inner product of two vectors a and b. n is the length of the vectors.
+         * @param a
+         * @param b
+         * @param n optional
+         * @returns Inner product of a and b.
+         */
+        innerProduct(a: number[], b: number[], n: number): number;
+        /**
+         * Cross product of two vectors a and b, both of length three.
+         * @param a
+         * @param b
+         * @returns Cross product of a and b.
+         */
+        crossProduct(a: number[], b: number[]): number;
+        /**
+         * Euclidean norm of vector a of length n.
+         * @param a
+         * @param n
+         * @returns Euclidean norm of a.
+         */
+        norm(a: number[], n: number): number;
+        /**
+         * Computes the cotangent of x.
+         * @param x
+         */
+        cot(x: number): number;
+        /**
+         * Computes the inverse of cotangent of x.
+         * @param x
+         */
+        acot(x: number): number;
+        /**
+         * Compute n-th real root of a real number. n must be strictly positive integer.
+         * If n is odd, the real n-th root exists and is negative.
+         * For n even, for negative valuees of x NaN is returned.
+         * @param a
+         * @param n
+         */
+        nthroot(a: number, n: number): number;
+        /**
+         * Computes cube root of real number.
+         * @param a
+         */
+        cbrt(a: number): number;
+        /**
+         * Compute base to the power of the rational exponent m / n.
+         * This function first reduces the fraction m/n and then computes JXG.Math.pow(base, m/n).
+         * @param a
+         */
+        ratpow(base: number, m: number, n: number): number;
+
+        /* -------------------------------------------------- */
+
         Clip: Clip;
         Geometry: Geometry;
         /**
@@ -4542,15 +4979,15 @@ declare module JXG {
         difference(subject: Circle | Curve | Polygon, clip: Circle | Curve | Polygon, board: Board): [number[], number[]];
         /**
          * Determine the intersection, union or difference of two closed paths.
-         * 
+         *
          * This is an implementation of the Greiner-Hormann algorithm, see Günther Greiner and Kai Hormann (1998).
          * "Efficient clipping of arbitrary polygons".
          * ACM Transactions on Graphics. 17 (2): 71–83. and Erich, L. Foster, and Kai Hormann, Kai, and Romeo Traaian Popa (2019), "Clipping simple polygons with degenerate intersections", Computers & Graphics:X, 2.
-         * 
+         *
          * It is assumed that the pathes are closed, whereby it does not matter if the last point indeed equals the first point.
          * In contrast to the original Greiner-Hormann algorithm, this algorithm can cope with many degenerate cases.
          * A degenerate case is a vertext of one path which is contained in the other path.
-         * 
+         *
          * Problematic are:
          * degenerate cases where one path additionally has self-intersections
          * differences with one path having self-intersections.
@@ -4601,15 +5038,23 @@ declare module JXG {
          */
         angle(A: Point | number[], B: Point | number[], C: Point | number[]): number;
         /**
+         * Calculates the distance of a point to a line.
+         * The point and line are given by homogeneous coordinates.
+         * For lines this can be line.stdform.
+         * @param point Homogeneous coordinates of a point.
+         * @param line Homogeneous coordinates of a point.
+         */
+        distPointLine(point: [C: number, A: number, B: number], line: [C: number, A: number, B: number]): number;
+        /**
          * Calculates the internal angle defined by the three points A, B, C if you're going from A to C around B counterclockwise.
          */
         rad(A: Point | number[], B: Point | number[], C: Point | number[]): number;
         /**
          * Calculates the angle defined by the three points A, B, C if you're going from A to C around B counterclockwise.
-         * @param A 
-         * @param B 
+         * @param A
+         * @param B
          * @param C
-         * @returns The angle in degrees. 
+         * @returns The angle in degrees.
          */
         trueAngle(A: Point | [x: number, y: number], B: Point | [x: number, y: number], C: Point | [x: number, y: number]): number;
     }
@@ -4638,9 +5083,9 @@ declare module JXG {
         /**
          * Solves a system of linear equations given by A and b using the Gauss-Jordan-elimination.
          * The algorithm runs in-place. I.e. the entries of A and b are changed.
-         * param A Square matrix represented by an array of rows, containing the coefficients of the linear equation system.
-         * param b A vector containing the linear equation system's right hand side.
-         * returns A vector that solves the linear equation system.
+         * @param A Square matrix represented by an array of rows, containing the coefficients of the linear equation system.
+         * @param b A vector containing the linear equation system's right hand side.
+         * @returns A vector that solves the linear equation system.
          */
         Gauss(A: number[][], b: number[]): number[];
 
@@ -4677,11 +5122,11 @@ declare module JXG {
         /**
          * Solve initial value problems numerically using Runge-Kutta-methods.
          * See http://en.wikipedia.org/wiki/Runge-Kutta_methods for more information on the algorithm.
-         * param butcher
-         * param x0
-         * param I
-         * param N
-         * param f
+         * @param butcher
+         * @param x0
+         * @param I
+         * @param N
+         * @param f
          * return An array of vectors describing the solution of the o.d.e. on the given interval I.
          */
         rungeKutta(butcher: unknown, x0: number[], I: number[], N: number, f: unknown): number[][];

@@ -133,13 +133,13 @@ define([
 
         /**
          * Stores the ticks coordinates
-         * @type {Array}
+         * @type Array
          */
         this.ticks = [];
 
         /**
          * Distance between two major ticks in user coordinates
-         * @type {Number}
+         * @type Number
          */
         this.ticksDelta = 1;
 
@@ -153,13 +153,13 @@ define([
 
         /**
          * A list of labels which have to be displayed in updateRenderer.
-         * @type {Array}
+         * @type Array
          */
         this.labelData = [];
 
         /**
          * To ensure the uniqueness of label ids this counter is used.
-         * @type {number}
+         * @type number
          */
         this.labelCounter = 0;
 
@@ -279,22 +279,23 @@ define([
                 return this;
             }
 
-            // horizontal line
             if (Math.abs(this.line.stdform[1]) < Mat.eps &&
                 Math.abs(c.usrCoords[1] * oldc.usrCoords[1]) > Mat.eps) {
 
+                // Horizontal line
                 dx = oldc.usrCoords[1] / c.usrCoords[1];
                 bb[0] *= dx;
                 bb[2] *= dx;
-                this.board.setBoundingBox(bb, false);
-            // vertical line
+                this.board.setBoundingBox(bb, this.board.keepaspectratio, 'update');
+
             } else if (Math.abs(this.line.stdform[2]) < Mat.eps &&
                        Math.abs(c.usrCoords[2] * oldc.usrCoords[2]) > Mat.eps) {
 
+                // Vertical line
                 dy = oldc.usrCoords[2] / c.usrCoords[2];
                 bb[3] *= dy;
                 bb[1] *= dy;
-                this.board.setBoundingBox(bb, false);
+                this.board.setBoundingBox(bb, this.board.keepaspectratio, 'update');
             }
 
             return this;
@@ -683,11 +684,16 @@ define([
                 tickPosition = ticksDelta;
             }
             while (tickPosition <= bounds.upper + eps2) {
-                // Only draw ticks when we are within bounds, ignore case where  tickPosition < lower < upper
+                // Only draw ticks when we are within bounds, ignore case where tickPosition < lower < upper
                 if (tickPosition >= bounds.lower - eps2) {
                     this.processTickPosition(coordsZero, tickPosition, ticksDelta, deltas);
                 }
                 tickPosition += ticksDelta;
+
+                // Emergency out
+                if ((bounds.upper - tickPosition) > ticksDelta * 10000) {
+                    break;
+                }
             }
 
             // Position ticks from zero (not inclusive) to the negative side while not reaching the lower boundary
@@ -698,6 +704,11 @@ define([
                     this.processTickPosition(coordsZero, tickPosition, ticksDelta, deltas);
                 }
                 tickPosition -= ticksDelta;
+
+                // Emergency out
+                if ((tickPosition - bounds.lower) > ticksDelta * 10000) {
+                    break;
+                }
             }
         },
 
@@ -1082,13 +1093,20 @@ define([
          */
         formatLabelText: function(value) {
             var labelText = value.toString(),
+                digits,
                 ev_s = Type.evaluate(this.visProp.scalesymbol);
 
             // if value is Number
             if (Type.isNumber(value)) {
                 if (labelText.length > Type.evaluate(this.visProp.maxlabellength) ||
                         labelText.indexOf('e') !== -1) {
-                    labelText = value.toPrecision(Type.evaluate(this.visProp.precision)).toString();
+
+                    digits = Type.evaluate(this.visProp.digits);
+                    if (Type.evaluate(this.visProp.precision) !== 3 && digits === 3) {
+                        // Use the deprecated attribute "precision"
+                        digits = Type.evaluate(this.visProp.precision);
+                    }
+                    labelText = value.toPrecision(digits).toString();
                 }
 
                 if (Type.evaluate(this.visProp.beautifulscientificticklabels)) {

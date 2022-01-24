@@ -31,7 +31,7 @@
 
 
 /*global JXG: true, define: true*/
-/*jslint nomen: true, plusplus: true*/
+/*jslint nomen: true, plusplus: true, unparam: true*/
 
 /* depends:
  jxg
@@ -46,8 +46,8 @@
  */
 
 define([
-    'jxg', 'base/constants', 'base/coords', 'math/math', 'math/statistics', 'options', 'parser/geonext', 'utils/event', 'utils/color', 'utils/type'
-], function (JXG, Const, Coords, Mat, Statistics, Options, GeonextParser, EventEmitter, Color, Type) {
+    'jxg', 'base/constants', 'base/coords', 'math/math', 'math/statistics', 'options', 'utils/event', 'utils/color', 'utils/type'
+], function (JXG, Const, Coords, Mat, Statistics, Options, EventEmitter, Color, Type) {
 
     "use strict";
 
@@ -231,7 +231,7 @@ define([
 
         /**
          * The position of this element inside the {@link JXG.Board#objectsList}.
-         * @type {Number}
+         * @type Number
          * @default -1
          * @private
          */
@@ -1357,6 +1357,12 @@ define([
                         this.board.renderer.setLayer(this, Type.evaluate(value));
                         this._set(key, value);
                         break;
+                    case 'tabindex':
+                        if (Type.exists(this.rendNode)) {
+                            this.rendNode.setAttribute('tabindex', value);
+                            this._set(key, value);
+                        }
+                        break;
                     default:
                         if (Type.exists(this.visProp[key]) &&
                             (!JXG.Validator[key] ||
@@ -1559,7 +1565,7 @@ define([
             // initiated by the user, e.g. through custom DOM events. We can't just pick one because this would break user
             // defined highlighting in many ways:
             //  * if overriding the highlight() methods the user had to handle the highlightedObjects stuff, otherwise he'd break
-            //    everything (e.g. the pie chart example http://jsxgraph.uni-bayreuth.de/wiki/index.php/Pie_chart (not exactly
+            //    everything (e.g. the pie chart example https://jsxgraph.org/wiki/index.php/Pie_chart (not exactly
             //    user defined but for this type of chart the highlight method was overridden and not adjusted to the changes in here)
             //    where it just kept highlighting until the radius of the pie was far beyond infinity...
             //  * user defined highlighting would get pointless, everytime the user highlights something using .highlight(), it would get
@@ -1619,6 +1625,8 @@ define([
          * Dimensions of the smallest rectangle enclosing the element.
          * @returns {Array} The coordinates of the enclosing rectangle in a format
          * like the bounding box in {@link JXG.Board#setBoundingBox}.
+         * 
+         * @returns {Array} similar to {@link JXG.Board#setBoundingBox}.
          */
         bounds: function () {
             return [0, 0, 0, 0];
@@ -1919,10 +1927,9 @@ define([
          */
         removeAllTicks: function () {
             var t;
-
             if (Type.exists(this.ticks)) {
-                for (t = this.ticks.length; t > 0; t--) {
-                    this.removeTicks(this.ticks[t - 1]);
+                for (t = this.ticks.length - 1; t >= 0; t--) {
+                    this.removeTicks(this.ticks[t]);
                 }
                 this.ticks = [];
                 this.board.update();
@@ -1941,19 +1948,19 @@ define([
             }
 
             if (Type.exists(this.ticks)) {
-                for (t = this.ticks.length; t > 0; t--) {
-                    if (this.ticks[t - 1] === tick) {
-                        this.board.removeObject(this.ticks[t - 1]);
+                for (t = this.ticks.length - 1; t >= 0; t--) {
+                    if (this.ticks[t] === tick) {
+                        this.board.removeObject(this.ticks[t]);
 
-                        if (this.ticks[t - 1].ticks) {
-                            for (j = 0; j < this.ticks[t - 1].ticks.length; j++) {
-                                if (Type.exists(this.ticks[t - 1].labels[j])) {
-                                    this.board.removeObject(this.ticks[t - 1].labels[j]);
+                        if (this.ticks[t].ticks) {
+                            for (j = 0; j < this.ticks[t].ticks.length; j++) {
+                                if (Type.exists(this.ticks[t].labels[j])) {
+                                    this.board.removeObject(this.ticks[t].labels[j]);
                                 }
                             }
                         }
 
-                        delete this.ticks[t - 1];
+                        delete this.ticks[t];
                         break;
                     }
                 }
@@ -1961,9 +1968,36 @@ define([
         },
 
         /**
+         * Determine values of snapSizeX and snapSizeY. If the attributes
+         * snapSizex and snapSizeY are greater than zero, these values are taken.
+         * Otherwise, determine the distance between major ticks of the
+         * default axes.
+         * @returns {Array} containing the snap sizes for x and y direction.
+         * @private
+         */
+        getSnapSizes: function() {
+            var sX, sY, ticks;
+
+            sX = Type.evaluate(this.visProp.snapsizex);
+            sY = Type.evaluate(this.visProp.snapsizey);
+
+            if (sX <= 0 && this.board.defaultAxes && this.board.defaultAxes.x.defaultTicks) {
+                ticks = this.board.defaultAxes.x.defaultTicks;
+                sX = ticks.ticksDelta * (Type.evaluate(ticks.visProp.minorticks) + 1);
+            }
+
+            if (sY <= 0 && this.board.defaultAxes && this.board.defaultAxes.y.defaultTicks) {
+                ticks = this.board.defaultAxes.y.defaultTicks;
+                sY = ticks.ticksDelta * (Type.evaluate(ticks.visProp.minorticks) + 1);
+            }
+
+            return [sX, sY];
+        },
+
+        /**
          * Move an element to its nearest grid point.
          * The function uses the coords object of the element as
-         * its actual position. If there is no coords object, nothing is done.
+         * its actual position. If there is no coords object or if the object is fixed, nothing is done.
          * @param {Boolean} force force snapping independent from what the snaptogrid attribute says
          * @param {Boolean} fromParent True if the drag comes from a child element. This is the case if a line
          *    through two points is dragged. In this case we do not try to force the points to stay inside of
@@ -1971,55 +2005,56 @@ define([
          * @returns {JXG.GeometryElement} Reference to this element
          */
         handleSnapToGrid: function (force, fromParent) {
-            var x, y, ticks,
-                //i, len, g, el, p,
-                boardBB,
+            var x, y, rx, ry, rcoords,
+                boardBB, res, sX, sY,
                 needsSnapToGrid = false,
-                sX = Type.evaluate(this.visProp.snapsizex),
-                sY = Type.evaluate(this.visProp.snapsizey);
+                attractToGrid = Type.evaluate(this.visProp.attracttogrid),
+                ev_au = Type.evaluate(this.visProp.attractorunit),
+                ev_ad = Type.evaluate(this.visProp.attractordistance);
 
-            if (!Type.exists(this.coords)) {
+            if (!Type.exists(this.coords) || Type.evaluate(this.visProp.fixed)) {
                 return this;
             }
 
-            needsSnapToGrid = Type.evaluate(this.visProp.snaptogrid) || force === true;
+            needsSnapToGrid = Type.evaluate(this.visProp.snaptogrid) || attractToGrid || force === true;
 
             if (needsSnapToGrid) {
                 x = this.coords.usrCoords[1];
                 y = this.coords.usrCoords[2];
+                res = this.getSnapSizes();
+                sX = res[0];
+                sY = res[1];
 
-                if (sX <= 0 && this.board.defaultAxes && this.board.defaultAxes.x.defaultTicks) {
-                    ticks = this.board.defaultAxes.x.defaultTicks;
-                    sX = ticks.ticksDelta * (Type.evaluate(ticks.visProp.minorticks) + 1);
-                }
-
-                if (sY <= 0 && this.board.defaultAxes && this.board.defaultAxes.y.defaultTicks) {
-                    ticks = this.board.defaultAxes.y.defaultTicks;
-                    sY = ticks.ticksDelta * (Type.evaluate(ticks.visProp.minorticks) + 1);
-                }
-
-                // if no valid snap sizes are available, don't change the coords.
+                // If no valid snap sizes are available, don't change the coords.
                 if (sX > 0 && sY > 0) {
                     boardBB = this.board.getBoundingBox();
-                    x = Math.round(x / sX) * sX;
-                    y = Math.round(y / sY) * sY;
+                    rx = Math.round(x / sX) * sX;
+                    ry = Math.round(y / sY) * sY;
+                    rcoords = new JXG.Coords(Const.COORDS_BY_USER, [rx, ry], this.board);
+                    if (!attractToGrid ||
+                        rcoords.distance(
+                            ev_au === 'screen' ? Const.COORDS_BY_SCREEN : Const.COORDS_BY_USER, this.coords
+                            ) < ev_ad) {
+                        x = rx;
+                        y = ry;
+                        // Checking whether x and y are still within boundingBox.
+                        // If not, adjust them to remain within the board.
+                        // Otherwise a point may become invisible.
+                        if (!fromParent) {
+                            if (x < boardBB[0]) {
+                                x += sX;
+                            } else if (x > boardBB[2]) {
+                                x -= sX;
+                            }
 
-                    // checking whether x and y are still within boundingBox,
-                    // if not, adjust them to remain within the board
-                    if (!fromParent) {
-                        if (x < boardBB[0]) {
-                            x += sX;
-                        } else if (x > boardBB[2]) {
-                            x -= sX;
+                            if (y < boardBB[3]) {
+                                y += sY;
+                            } else if (y > boardBB[1]) {
+                                y -= sY;
+                            }
                         }
-
-                        if (y < boardBB[3]) {
-                            y += sY;
-                        } else if (y > boardBB[1]) {
-                            y -= sY;
-                        }
+                        this.coords.setCoordinates(Const.COORDS_BY_USER, [x, y]);
                     }
-                    this.coords.setCoordinates(Const.COORDS_BY_USER, [x, y]);
                 }
             }
             return this;

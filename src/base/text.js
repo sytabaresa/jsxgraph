@@ -29,7 +29,6 @@
     and <http://opensource.org/licenses/MIT/>.
  */
 
-
 /*global JXG: true, define: true, window: true*/
 /*jslint nomen: true, plusplus: true*/
 
@@ -50,18 +49,18 @@
 
 define([
     'jxg', 'base/constants', 'base/element', 'parser/geonext',
-    'utils/env', 'utils/type', 'math/math', 'math/geometry', 'base/coordselement'
-], function (JXG, Const, GeometryElement, GeonextParser, Env, Type, Mat, Geometry, CoordsElement) {
+    'utils/env', 'utils/type', 'math/math', 'base/coordselement'
+], function (JXG, Const, GeometryElement, GeonextParser, Env, Type, Mat, CoordsElement) {
 
     "use strict";
 
     var priv = {
-            HTMLSliderInputEventHandler: function () {
-                this._val = parseFloat(this.rendNodeRange.value);
-                this.rendNodeOut.value = this.rendNodeRange.value;
-                this.board.update();
-            }
-        };
+        HTMLSliderInputEventHandler: function () {
+            this._val = parseFloat(this.rendNodeRange.value);
+            this.rendNodeOut.value = this.rendNodeRange.value;
+            this.board.update();
+        }
+    };
 
     /**
      * Construct and handle texts.
@@ -99,17 +98,19 @@ define([
          * Width and height of the the text element in pixel.
          *
          * @private
-         * @type {Array}
+         * @type Array
          */
         this.size = [1.0, 1.0];
         this.id = this.board.setId(this, 'T');
 
-        // Set text before drawing
-        this._setUpdateText(content);
-        this.updateText();
-
         this.board.renderer.drawText(this);
         this.board.finalizeAdding(this);
+
+        // Set text before drawing
+        // this._createFctUpdateText(content);
+        // this.updateText();
+
+        this.setText(content);
 
         if (Type.isString(this.content)) {
             this.notifyParents(this.content);
@@ -133,7 +134,7 @@ define([
          * at the left side or at the right side of the text.
          * Sensitivity is set in this.board.options.precision.hasPoint.
          * If dragarea is set to 'all' (default), tests if the the screen
-        * coordinates (x,y) are in within the text boundary.
+         * coordinates (x,y) are in within the text boundary.
          * @param {Number} x
          * @param {Number} y
          * @returns {Boolean}
@@ -177,12 +178,12 @@ define([
             top = bot - this.size[1];
 
             if (Type.evaluate(this.visProp.dragarea) === 'all') {
-                return x >= lft - r && x < rt + r && y >= top - r  && y <= bot + r;
+                return x >= lft - r && x < rt + r && y >= top - r && y <= bot + r;
             }
             // e.g. 'small'
             return (y >= top - r && y <= bot + r) &&
-                ((x >= lft - r  && x <= lft + 2 * r) ||
-                (x >= rt - 2 * r && x <= rt + r));
+                ((x >= lft - r && x <= lft + 2 * r) ||
+                    (x >= rt - 2 * r && x <= rt + r));
         },
 
         /**
@@ -191,7 +192,7 @@ define([
          * @param {String|Function|Number} text
          * @private
          */
-        _setUpdateText: function (text) {
+        _createFctUpdateText: function (text) {
             var updateText, resolvedText,
                 ev_p = Type.evaluate(this.visProp.parse),
                 ev_um = Type.evaluate(this.visProp.usemathjax),
@@ -202,7 +203,7 @@ define([
                 this.updateText = function () {
                     resolvedText = text().toString();
                     if (ev_p && !ev_um && !ev_uk) {
-                        this.plaintext = this.replaceSub(this.replaceSup(this.convertGeonext2CSS(resolvedText)));
+                        this.plaintext = this.replaceSub(this.replaceSup(this.convertGeonextAndSketchometry2CSS(resolvedText)));
                     } else {
                         this.plaintext = resolvedText;
                     }
@@ -242,7 +243,7 @@ define([
          * @private
          */
         _setText: function (text) {
-            this._setUpdateText(text);
+            this._createFctUpdateText(text);
 
             // First evaluation of the string.
             // We need this for display='internal' and Canvas
@@ -270,7 +271,6 @@ define([
             var s;
 
             this.visProp.castext = text;
-
             if (Type.isFunction(text)) {
                 s = function () {
                     return Type.sanitizeHTML(text());
@@ -308,7 +308,7 @@ define([
          * @return {[type]} [description]
          */
         updateSize: function () {
-            var tmp, s, that, node,
+            var tmp, that, node,
                 ev_d = Type.evaluate(this.visProp.display);
 
             if (!Env.isBrowser || this.board.renderer.type === 'no') {
@@ -337,9 +337,7 @@ define([
                     //         that.needsUpdate = true;
                     //         that.updateRenderer();
                     //     }, 0);
-                    //     console.log("HERE");
                     // } else {
-                    //     console.log("tHERE");
                     //     this.size = s;
                     // }
                 } else {
@@ -348,13 +346,14 @@ define([
             } else if (ev_d === 'internal') {
                 if (this.board.renderer.type === 'svg') {
                     that = this;
-                    window.setTimeout(function(){
+                    window.setTimeout(function () {
                         try {
                             tmp = node.getBBox();
                             that.size = [tmp.width, tmp.height];
                             that.needsUpdate = true;
                             that.updateRenderer();
-                        } catch (e) {}
+                        } catch (e) {
+                        }
                     }, 0);
                 } else if (this.board.renderer.type === 'canvas') {
                     this.size = this.crudeSizeEstimate();
@@ -378,7 +377,7 @@ define([
          * @param {String} string
          * @returns {String}
          */
-        utf8_decode : function (string) {
+        utf8_decode: function (string) {
             return string.replace(/&#x(\w+);/g, function (m, p1) {
                 return String.fromCharCode(parseInt(p1, 16));
             });
@@ -576,8 +575,8 @@ define([
          * @param{String} expr Math term
          * @returns {string} expanded String
          */
-        expandShortMath: function(expr) {
-            var re = /([\)0-9\.])\s*([\(a-zA-Z_])/g;
+        expandShortMath: function (expr) {
+            var re = /([)0-9.])\s*([(a-zA-Z_])/g;
             return expr.replace(re, '$1*$2');
         },
 
@@ -591,7 +590,7 @@ define([
          * @param{Boolean} [avoidGeonext2JS] Optional flag if geonext2JS should be called. For backwards compatibility
          * this has to be set explicitely to true.
          * @private
-         * @see JXG.GeonextParser.geonext2JS.
+         * @see JXG.GeonextParser.geonext2JS
          */
         generateTerm: function (contentStr, expand, avoidGeonext2JS) {
             var res, term, i, j,
@@ -651,7 +650,7 @@ define([
             }
 
             plaintext += ' + "' + this.replaceSub(this.replaceSup(contentStr)) + '"';
-            plaintext = this.convertGeonext2CSS(plaintext);
+            plaintext = this.convertGeonextAndSketchometry2CSS(plaintext);
 
             // This should replace &amp;pi; by &pi;
             plaintext = plaintext.replace(/&amp;/g, '&');
@@ -662,22 +661,73 @@ define([
 
         /**
          * Converts the GEONExT tags <overline> and <arrow> to
-         * HTML span tags with proper CSS formating.
+         * HTML span tags with proper CSS formatting.
          * @private
-         * @see JXG.Text.generateTerm @see JXG.Text._setText
+         * @see JXG.Text.generateTerm
+         * @see JXG.Text._setText
          */
         convertGeonext2CSS: function (s) {
             if (Type.isString(s)) {
-                s = s.replace(/<overline>/g, '<span style=text-decoration:overline>');
-                s = s.replace(/&lt;overline&gt;/g, '<span style=text-decoration:overline>');
-                s = s.replace(/<\/overline>/g, '</span>');
-                s = s.replace(/&lt;\/overline&gt;/g, '</span>');
-                s = s.replace(/<arrow>/g, '<span style=text-decoration:overline>');
-                s = s.replace(/&lt;arrow&gt;/g, '<span style=text-decoration:overline>');
-                s = s.replace(/<\/arrow>/g, '</span>');
-                s = s.replace(/&lt;\/arrow&gt;/g, '</span>');
+                s = s.replace(
+                    /(<|&lt;)overline(>|&gt;)/g,
+                    '<span style=text-decoration:overline;>'
+                );
+                s = s.replace(
+                    /(<|&lt;)\/overline(>|&gt;)/g,
+                    '</span>'
+                );
+                s = s.replace(
+                    /(<|&lt;)arrow(>|&gt;)/g,
+                    '<span style=text-decoration:overline;>'
+                );
+                s = s.replace(
+                    /(<|&lt;)\/arrow(>|&gt;)/g,
+                    '</span>'
+                );
             }
 
+            return s;
+        },
+
+        /**
+         * Converts the sketchometry tag <sketchofont> to
+         * HTML span tags with proper CSS formatting.
+         * @private
+         * @see JXG.Text.generateTerm
+         * @see JXG.Text._setText
+         */
+        convertSketchometry2CSS: function (s) {
+            if (Type.isString(s)) {
+                s = s.replace(
+                    /(<|&lt;)sketchofont(>|&gt;)/g,
+                    '<span style=font-family:sketchometry-light;font-weight:500;>'
+                );
+                s = s.replace(
+                    /(<|&lt;)\/sketchofont(>|&gt;)/g,
+                    '</span>'
+                );
+                s = s.replace(
+                    /(<|&lt;)sketchometry-light(>|&gt;)/g,
+                    '<span style=font-family:sketchometry-light;font-weight:500;>'
+                );
+                s = s.replace(
+                    /(<|&lt;)\/sketchometry-light(>|&gt;)/g,
+                    '</span>'
+                );
+            }
+
+            return s;
+        },
+
+        /**
+         * Alias for convertGeonext2CSS and convertSketchometry2CSS
+         * @private
+         * @see JXG.Text.convertGeonext2CSS
+         * @see JXG.Text.convertSketchometry2CSS
+         */
+        convertGeonextAndSketchometry2CSS: function (s){
+            s = this.convertGeonext2CSS(s);
+            s = this.convertSketchometry2CSS(s);
             return s;
         },
 
@@ -696,7 +746,7 @@ define([
             content = content.replace(/&lt;\/value&gt;/g, '</value>');
 
             do {
-                search = /<value>([\w\s\*\/\^\-\+\(\)\[\],<>=!]+)<\/value>/;
+                search = /<value>([\w\s*/^\-+()[\],<>=!]+)<\/value>/;
                 res = search.exec(content);
 
                 if (res !== null) {
@@ -734,7 +784,7 @@ define([
             return [c[1], c[2] + this.size[1] / this.board.unitY, c[1] + this.size[0] / this.board.unitX, c[2]];
         },
 
-        getAnchorX: function() {
+        getAnchorX: function () {
             var a = Type.evaluate(this.visProp.anchorx);
             if (a === 'auto') {
                 switch (this.visProp.position) {
@@ -755,7 +805,7 @@ define([
             return a;
         },
 
-        getAnchorY: function() {
+        getAnchorY: function () {
             var a = Type.evaluate(this.visProp.anchory);
             if (a === 'auto') {
                 switch (this.visProp.position) {
@@ -787,9 +837,9 @@ define([
          * @param  {Number} h width of the box in pixel
          * @return {Number}   Number of overlapping elements
          */
-        getNumberofConflicts: function(x, y, w, h) {
+        getNumberofConflicts: function (x, y, w, h) {
             var count = 0,
-			    i, obj, le,
+                i, obj, le,
                 savePointPrecision;
 
             // Set the precision of hasPoint to half the max if label isn't too long
@@ -798,21 +848,21 @@ define([
             this.board.options.precision.hasPoint = (w + h) * 0.25;
             // TODO:
             // Make it compatible with the objects' visProp.precision attribute
-			for (i = 0, le = this.board.objectsList.length; i < le; i++) {
-				obj = this.board.objectsList[i];
-				if (obj.visPropCalc.visible &&
+            for (i = 0, le = this.board.objectsList.length; i < le; i++) {
+                obj = this.board.objectsList[i];
+                if (obj.visPropCalc.visible &&
                     obj.elType !== 'axis' &&
                     obj.elType !== 'ticks' &&
                     obj !== this.board.infobox &&
                     obj !== this &&
                     obj.hasPoint(x, y)) {
 
-					count++;
-				}
-			}
+                    count++;
+                }
+            }
             this.board.options.precision.hasPoint = savePointPrecision;
 
-			return count;
+            return count;
         },
 
         /**
@@ -822,9 +872,10 @@ define([
          *
          * @returns {JXG.Text} Reference to the text object.
          */
-        setAutoPosition: function() {
+        setAutoPosition: function () {
             var x, y, cx, cy,
-                anchorCoords, anchorX, anchorY,
+                anchorCoords,
+                // anchorX, anchorY,
                 w = this.size[0],
                 h = this.size[1],
                 start_angle, angle,
@@ -846,8 +897,8 @@ define([
                 return this;
             }
 
-            anchorX = Type.evaluate(this.visProp.anchorx);
-            anchorY = Type.evaluate(this.visProp.anchory);
+            // anchorX = Type.evaluate(this.visProp.anchorx);
+            // anchorY = Type.evaluate(this.visProp.anchory);
             offset = Type.evaluate(this.visProp.offset);
             anchorCoords = this.element.getLabelAnchor();
             cx = anchorCoords.scrCoords[1];
@@ -872,8 +923,8 @@ define([
             start_angle = Math.atan2(dy, dx);
 
             optimum.conflicts = conflicts;
-            optimum.angle     = start_angle;
-            optimum.r         = r;
+            optimum.angle = start_angle;
+            optimum.r = r;
 
             while (optimum.conflicts > 0 && r < max_r) {
                 for (j = 1, angle = start_angle + step; j < num_positions && optimum.conflicts > 0; j++) {
@@ -882,12 +933,12 @@ define([
 
                     x = cx + r * co;
                     y = cy - r * si;
-                
+
                     conflicts = this.getNumberofConflicts(x, y, w, h);
                     if (conflicts < optimum.conflicts) {
                         optimum.conflicts = conflicts;
-                        optimum.angle     = angle;
-                        optimum.r         = r;
+                        optimum.angle = angle;
+                        optimum.r = r;
                     }
                     if (optimum.conflicts === 0) {
                         break;
@@ -994,8 +1045,8 @@ define([
 
         if (!t) {
             throw new Error("JSXGraph: Can't create text with parent types '" +
-                    (typeof parents[0]) + "' and '" + (typeof parents[1]) + "'." +
-                    "\nPossible parent types: [x,y], [z,x,y], [element,transformation]");
+                (typeof parents[0]) + "' and '" + (typeof parents[1]) + "'." +
+                "\nPossible parent types: [x,y], [z,x,y], [element,transformation]");
         }
 
         if (attr.rotate !== 0 && attr.display === 'internal') { // This is the default value, i.e. no rotation
@@ -1067,7 +1118,7 @@ define([
             t.rendNodeForm.id = t.rendNode.id + '_form';
             t.rendNodeRange.id = t.rendNode.id + '_range';
             t.rendNodeOut.id = t.rendNode.id + '_out';
-	} catch (e) {
+        } catch (e) {
             JXG.debug(e);
         }
 

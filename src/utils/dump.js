@@ -188,7 +188,7 @@ define(['jxg', 'utils/type'], function (JXG, Type) {
             methods.push({
                 obj: boardVarName,
                 method: 'setBoundingBox',
-                params: [board.getBoundingBox(), true]
+                params: [board.getBoundingBox(), board.keepaspectratio]
             });
 
             return methods;
@@ -208,15 +208,6 @@ define(['jxg', 'utils/type'], function (JXG, Type) {
                 len = board.objectsList.length;
 
             this.addMarkers(board, 'dumped', false);
-
-            // This has been moved to toJavaScript and toJessie
-            /*
-            methods.push({
-                obj: '$board',
-                method: 'setBoundingBox',
-                params: [board.getBoundingBox(), true]
-            });
-            */
 
             for (e = 0; e < len; e++) {
                 obj = board.objectsList[e];
@@ -313,7 +304,7 @@ define(['jxg', 'utils/type'], function (JXG, Type) {
                 }
                 return 'null';
             case 'string':
-                return '\'' + obj.replace(/(["'])/g, '\\$1') + '\'';
+                return '\'' + obj.replace(/\\/g,'\\\\').replace(/(["'])/g, '\\$1') + '\'';
             case 'number':
             case 'boolean':
                 return obj.toString();
@@ -328,7 +319,7 @@ define(['jxg', 'utils/type'], function (JXG, Type) {
          * @returns {String} JessieCode
          */
         toJessie: function (board) {
-            var i, elements,
+            var i, elements, id,
                 dump = this.dump(board),
                 script = [];
 
@@ -340,8 +331,15 @@ define(['jxg', 'utils/type'], function (JXG, Type) {
                 if (elements[i].attributes.name.length > 0) {
                     script.push('// ' + elements[i].attributes.name);
                 }
-
                 script.push('s' + i + ' = ' + elements[i].type + '(' + elements[i].parents.join(', ') + ') ' + this.toJCAN(elements[i].attributes).replace(/\n/, '\\n') + ';');
+
+                if (elements[i].type === 'axis') {
+                    // Handle the case that remove[All]Ticks had been called.
+                    id = elements[i].attributes.id;
+                    if (board.objects[id].defaultTicks === null) {
+                        script.push('s' + i + '.removeAllTicks();');
+                    }
+                }
                 script.push('');
             }
 
@@ -364,7 +362,7 @@ define(['jxg', 'utils/type'], function (JXG, Type) {
          * @returns {String} JavaScript
          */
         toJavaScript: function (board) {
-            var i, elements,
+            var i, elements, id,
                 dump = this.dump(board),
                 script = [];
 
@@ -374,6 +372,14 @@ define(['jxg', 'utils/type'], function (JXG, Type) {
 
             for (i = 0; i < elements.length; i++) {
                 script.push('board.create("' + elements[i].type + '", [' + elements[i].parents.join(', ') + '], ' + Type.toJSON(elements[i].attributes) + ');');
+
+                if (elements[i].type === 'axis') {
+                    // Handle the case that remove[All]Ticks had been called.
+                    id = elements[i].attributes.id;
+                    if (board.objects[id].defaultTicks === null) {
+                        script.push('board.objects["' + id + '"].removeTicks(board.objects["' + id + '"].defaultTicks);');
+                    }
+                }
             }
 
             for (i = 0; i < dump.methods.length; i++) {
